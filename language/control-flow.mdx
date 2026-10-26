@@ -1,0 +1,75 @@
+---
+title: "Control Flow: if, elif, and else in Nano"
+sidebarTitle: "Control Flow"
+description: "Use if, elif, and else in Nano to branch on conditions. Covers syntax, comparison operators, and how to handle compound conditions with bool."
+---
+
+Branching logic in Nano works much like it does in Python: an `if` block fires when its condition is true, optional `elif` blocks provide additional conditions tested in order, and an `else` block catches everything that falls through. Bodies are delimited by indentation — no braces required.
+
+## Syntax
+
+```text
+if <operand> <op> <operand>:
+    # body
+
+elif <operand> <op> <operand>:
+    # body
+
+else:
+    # body
+```
+
+Each operand can be a numeric literal, a quoted string literal, or the name of a declared variable. The `elif` and `else` clauses are optional and can be repeated or omitted as needed.
+
+### Full example
+
+The following block is taken directly from the Nano example script. It checks the value of `x`, then falls back on `y`, and finally catches everything else:
+
+```text
+if x == 1234567:
+    # Fires as long as x is currently 1234567
+elif y >= 12345:
+    # Fires if y is greater than or equal to 12345,
+    # and x is not equal to 1234567
+else:
+    # Fires whenever the above if and elif conditions are not met
+```
+
+---
+
+## Comparison operators
+
+Nano supports the standard set of binary comparison operators for use in `if` and `elif` conditions:
+
+| Operator | Meaning |
+|----------|---------|
+| `==` | Equal to |
+| `!=` | Not equal to |
+| `<` | Less than |
+| `<=` | Less than or equal to |
+| `>` | Greater than |
+| `>=` | Greater than or equal to |
+
+Both operands in a comparison must be the same type. Mixing a `num` variable with a string literal, for example, will produce a type-mismatch error at compile time.
+
+---
+
+## Compound conditions and the `bool` statement
+
+A single `if` condition accepts exactly **one comparison** — there is no `and`/`or` syntax inside an `if` header. When you need compound logic, you must compute the result step-by-step using the [`bool` statement](/language/booleans) and then branch on `bool.out`:
+
+```text
+bool x == 14 or x == 13
+bool .out and y == 2
+
+if bool.out == 1:
+    # x is 13 or 14, and y is 2
+```
+
+This separation between condition computation and branching is intentional — it keeps the control-flow syntax simple and the boolean logic explicit. See [Boolean Expressions](/language/booleans) for the full `bool` reference.
+
+---
+
+<Note>
+Code generation for `if`, `elif`, and `else` is actively being developed. The compiler parses and validates these statements correctly, and the syntax documented here is stable, but full NASM emission for control-flow blocks is still in progress. Check back for updates as the Nano compiler matures.
+</Note>

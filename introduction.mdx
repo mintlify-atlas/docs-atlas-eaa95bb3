@@ -1,0 +1,80 @@
+---
+title: "Nano: A Human-Readable Language That Compiles to x86-64"
+sidebarTitle: "Introduction"
+description: "Nano is a Python-inspired compiled language that targets x86-64 NASM assembly on Windows. Learn what it is, how the compiler works, and when to use it."
+---
+
+Nano is a compiled programming language designed from the ground up to be readable, straightforward, and easy to debug. Inspired by Python's clean syntax, Nano lets you write expressive code that compiles all the way down to native x86-64 NASM assembly and runs as a Windows executable — no runtime, no virtual machine, no interpreter. The goal is simple: code should communicate clearly to the human reading it, not just to the machine executing it.
+
+## How It Fits Together
+
+Nano's compilation pipeline is two stages. The Nano compiler (`nlang.exe`) reads your `.n` source file and produces a complete NASM assembly file. You then assemble that file with the standard NASM toolchain to produce a native Windows `.exe`. Both steps are fast, transparent, and produce artifacts you can inspect at every stage.
+
+<Steps>
+  <Step title="Write your source">
+    Create a `.n` file (or `.nc`/`.ns` for modules and packages) using Nano's Python-like syntax. Variables, conditionals, loops, and boolean expressions all read like plain English.
+  </Step>
+  <Step title="Run the Nano compiler">
+    Pass your source file to `nlang.exe`. The compiler lexes, parses, and emits a complete win64 NASM program:
+
+    ```bash
+    nlang.exe myscript.n
+    ```
+
+    This produces `myscript.nasm` in the same directory.
+  </Step>
+  <Step title="Assemble with NASM">
+    Assemble the generated file into a COFF object:
+
+    ```bash
+    nasm -f win64 myscript.nasm -o myscript.obj
+    ```
+  </Step>
+  <Step title="Link into an executable">
+    Link against the Windows kernel library to produce the final binary:
+
+    ```bash
+    link /subsystem:console /entry:main myscript.obj kernel32.lib
+    ```
+  </Step>
+  <Step title="Run your program">
+    Execute the resulting `myscript.exe` directly from the command line or file explorer. No install step, no dependencies.
+  </Step>
+</Steps>
+
+## Supported File Extensions
+
+Nano recognises three file extensions. The compiler validates the extension before reading the file, so each type is handled intentionally.
+
+| Extension | Name | Purpose |
+|-----------|------|---------|
+| `.n` | Script | A standard Nano source file. The most common type; use this for standalone programs and scripts. |
+| `.nc` | Compiled module | A Nano module intended to be imported by other Nano programs. Shares the same syntax as `.n`. |
+| `.ns` | Package / namespace file | A namespace definition file. Names beginning with `__` (double underscore) are reserved exclusively for `.ns` files — the compiler enforces this rule and rejects reserved-prefix names in any other context. |
+
+## Design Philosophy
+
+The Nano project is built on a straightforward principle: **code should be readable by humans**. Every language feature, compiler implementation decision, and contribution guideline flows from that premise.
+
+The Nano compiler itself is written entirely in hand-crafted x86-64 NASM assembly — no generated code, no obfuscated macros, no AI-assisted output. The project's contribution guidelines state this explicitly: suggestions containing convoluted, obfuscated, or unnecessarily complex code will not be merged into the main branch, and AI-generated code is not accepted unless it has been thoroughly tested and reviewed by an experienced human contributor.
+
+## Requirements
+
+- **NASM assembler** — available at [nasm.us](https://www.nasm.us). Required both to build the compiler from source and to assemble the generated output.
+- **Windows x64** — Windows 11 is recommended. The compiler produces win64 PE executables and uses the Windows x64 calling convention throughout.
+- **A text editor** — VS Code is recommended; a Nano extension providing syntax highlighting is available.
+
+<Note>
+  A Linux port of the Nano compiler is currently in progress. At present, all compilation targets Windows x64.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Write and compile your first Nano program in minutes. Covers prerequisites, building `nlang.exe`, and running a native executable.
+  </Card>
+  <Card title="Building the Compiler" icon="wrench" href="/building-the-compiler">
+    Assemble `nlang.exe` from the four NASM source files. Includes build commands, source file roles, and buffer limit details.
+  </Card>
+</CardGroup>

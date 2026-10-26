@@ -1,0 +1,122 @@
+---
+title: "Working with Strings in Nano: str and lstr"
+sidebarTitle: "Strings"
+description: "Nano offers two string types: str for up to 8 characters and lstr for unlimited length. Learn indexing, length queries, and when to choose each type."
+---
+
+Nano provides two distinct string types to balance performance against storage capacity. The `str` type packs up to eight characters into a single 64-bit register, making it extremely fast to load and compare. The `lstr` (long string) type lives in the `.data` section of the executable with an 8-byte length prefix, trading a little runtime overhead for the ability to hold strings of arbitrary length. Choosing the right type from the start avoids a compiler error and keeps your generated code efficient.
+
+## The `str` Type
+
+A `str` variable stores up to **8 characters**, packed little-endian into a 64-bit value (the first character occupies the lowest byte). Because the value fits in a register, operations on `str` are as fast as operations on `num`.
+
+```text
+var str greeting = 'hello'
+var str code = "AB12"
+```
+
+- **Default value:** `'0'` (the character zero, not the digit).
+- **Maximum length:** 8 characters. Exceeding this limit raises compile error `ERR_STR_TOO_LONG`.
+- Literals may use single quotes (`'...'`) or double quotes (`"..."`).
+
+### Length
+
+```text
+var num len = greeting.length
+```
+
+Returns the count of non-zero bytes in the packed value.
+
+### Index Access
+
+```text
+var str first = greeting[0]
+```
+
+Returns a one-character `str` containing the character at the given zero-based position.
+
+## The `lstr` Type
+
+An `lstr` variable is stored in the `.data` section as an **8-byte big-endian length prefix** followed by the payload bytes. There is no character limit.
+
+```text
+var lstr sentence = 'this sentence is very long and it will not fit in a normal string variable'
+```
+
+- **Default value:** `'0'`.
+- **No character limit** — limited only by available memory and the 1 MiB output buffer.
+- Slightly slower than `str` because the value must be read from memory rather than from a register.
+
+### Length
+
+```text
+var num len = sentence.length
+```
+
+Reads the 8-byte big-endian length prefix at the start of the variable's storage.
+
+### Index Access
+
+```text
+var str ch = sentence[4]
+```
+
+Returns the character at the given zero-based index as a one-character `str`.
+
+## String Literals
+
+Both types accept the same literal syntax:
+
+- **Single quotes:** `'hello world'`
+- **Double quotes:** `"hello world"`
+
+The opening and closing quote character must match. String literals cannot span multiple lines.
+
+<Note>
+  Escape sequences (such as `\n` or `\t`) are not yet supported. If you need a newline or tab character inside a string, they must be embedded directly in the source or handled through a future escape sequence feature.
+</Note>
+
+## Choosing Between `str` and `lstr`
+
+<CardGroup cols={2}>
+  <Card title="Use str when…" icon="bolt">
+    - Your value is **8 characters or fewer**
+    - You need the fastest possible load and compare
+    - You are storing short codes, tags, or flags (e.g. `'ok'`, `'AB12'`)
+    - You want to store strings in a `list str`
+  </Card>
+  <Card title="Use lstr when…" icon="database">
+    - Your value **exceeds 8 characters**
+    - You are storing sentences, paths, or user-facing messages
+    - Raw speed is less important than storage capacity
+  </Card>
+</CardGroup>
+
+## Type Summary
+
+| Feature | `str` | `lstr` |
+|---|---|---|
+| Max length | 8 characters | Unlimited |
+| Storage | 64-bit register value | `.data` section with length prefix |
+| Default value | `'0'` | `'0'` |
+| `.length` returns | Count of non-zero bytes | 8-byte big-endian prefix value |
+| `[index]` returns | One-character `str` | One-character `str` |
+| Usable in `list str` | Yes | **No** |
+| Relative speed | Faster | Slower |
+
+## Example
+
+```text
+var str tag = 'nano'
+var lstr desc = 'a compiled language that targets x86 windows'
+
+var num tlen = tag.length      # 4
+var num dlen = desc.length     # 44
+
+var str tc = tag[0]            # 'n'
+var str dc = desc[2]           # 'a'
+```
+
+<Warning>
+  The `str` type silently defaults to `'0'` when uninitialised, but assigning a literal longer than 8 characters raises compile error `ERR_STR_TOO_LONG` (error code 9). If you see this error, switch the variable to `lstr`.
+</Warning>

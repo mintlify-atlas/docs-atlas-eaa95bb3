@@ -1,0 +1,155 @@
+---
+title: "Variables and Types in Nano"
+sidebarTitle: "Variables"
+description: "Declare persistent and temporary variables in Nano with var and tvar. Covers num, str, lstr types, initialiser expressions, and naming rules."
+---
+
+Variables are one of the most fundamental building blocks of any Nano program. Nano gives you two declaration keywords — `var` for persistent variables and `tvar` for scoped temporaries — paired with three distinct types that map directly to the underlying 64-bit assembly representation the compiler generates.
+
+## Declaring variables with `var`
+
+The `var` keyword declares a variable that persists for the lifetime of the current script or function. The full syntax is:
+
+```text
+var num|str|lstr <name> [= <value>]
+```
+
+The type comes immediately after `var`, followed by the variable name and an optional initialiser. When no initialiser is supplied Nano assigns a type-specific default automatically.
+
+### Type reference
+
+| Type | Storage | Maximum size | Default value |
+|------|---------|--------------|---------------|
+| `num` | 8-byte signed integer (qword) | — | `0` |
+| `str` | Characters packed little-endian in a qword | **8 characters** | `'0'` |
+| `lstr` | 8-byte big-endian length prefix + payload bytes in `.data` | Unlimited | `'0'` |
+
+### Examples
+
+<Steps>
+
+<Step title="Declare a num variable">
+Declare a numeric variable without an initialiser — it defaults to `0`:
+
+```text
+var num score
+```
+
+Declare one with an immediate integer value:
+
+```text
+var num score = 42
+```
+
+Negative numbers and hexadecimal literals are also accepted:
+
+```text
+var num offset = -8
+var num flags  = 0xFF
+```
+</Step>
+
+<Step title="Declare a str variable">
+Short strings of up to eight characters are stored in a single qword:
+
+```text
+var str greeting
+```
+
+With an initialiser:
+
+```text
+var str greeting = 'hello'
+```
+
+Omitting the initialiser leaves the variable set to the default value `'0'`.
+</Step>
+
+<Step title="Declare an lstr variable">
+When your string is longer than eight characters, use `lstr`. The payload is stored in the `.data` section with an 8-byte big-endian length prefix:
+
+```text
+var lstr message = 'a very long string here'
+```
+
+`lstr` variables always require a string literal as their initialiser — they cannot be initialised from an expression.
+</Step>
+
+</Steps>
+
+---
+
+## Temporary variables with `tvar`
+
+`tvar` uses exactly the same syntax as `var` and produces identical compiled output, but it signals to the compiler's symbol table that the variable is **temporary**. Temporary variables are purged — removed from the symbol table — when the current scope ends (at the end of a function, script, or block).
+
+```text
+tvar num counter = 0
+tvar str label   = 'tmp'
+tvar lstr buffer = 'scratch space for this function only'
+```
+
+Use `tvar` whenever a variable is only needed within a single scope to avoid polluting the variable table and to make your intent explicit to anyone reading the code.
+
+<Tip>
+Loop counters and intermediate calculation values are ideal candidates for `tvar`. They are automatically cleaned up at scope exit, so you never have to manage them manually.
+</Tip>
+
+---
+
+## Initialiser expressions
+
+The right-hand side of a `var` or `tvar` declaration can be more than a bare literal. Nano supports several value expressions that let you seed a new variable from an existing one:
+
+| Expression | Result type | Description |
+|------------|-------------|-------------|
+| `other_var` | same as source | Copy the value of another variable |
+| `s.length` | `num` | Character count of a `str` variable `s` |
+| `s[0]` | `str` | Character at index `0` of a `str` variable |
+| `l.length` | `num` | Byte length of an `lstr` variable `l` |
+| `l[0]` | `str` | Byte at index `0` of an `lstr` variable |
+| `list.x.length` | `num` | Number of items in list `x` |
+| `list.x[2]` | element type | Item at index `2` in list `x` |
+
+```text
+var num x = 100
+var num y = x            # copy x into y
+
+var str name = 'hello'
+var num n    = name.length   # n = 5
+var str c    = name[0]       # c = 'h'
+
+var num len  = list.items.length
+var num v    = list.items[2]
+```
+
+<Note>
+Type checking is enforced at compile time. The type of the expression on the right-hand side must match the declared type of the variable on the left-hand side, or the compiler will exit with error `ERR_TYPE_MISMATCH`.
+</Note>
+
+---
+
+## Naming rules
+
+Nano enforces the following rules on all variable names:
+
+<CardGroup cols={2}>
+  <Card title="No digit start" icon="circle-xmark">
+    A name must not begin with a digit (`0`–`9`). `score2` is valid; `2score` is not.
+  </Card>
+  <Card title="Maximum 255 characters" icon="ruler">
+    The name length is stored in a single byte, so names are capped at 255 characters. Exceeding this limit triggers `ERR_NAME_TOO_LONG`.
+  </Card>
+  <Card title="No redeclaration" icon="circle-xmark">
+    Declaring the same name twice in scope triggers `ERR_REDECLARED`. There is no shadowing — each name must be unique within the active variable table.
+  </Card>
+  <Card title="Double-underscore prefix reserved" icon="lock">
+    Names beginning with `__` are reserved for package (`.ns`) files. Defining a `__`-prefixed variable in a regular script triggers `ERR_RESERVED_NAME`.
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+`str` can store **at most 8 characters**. If your value might ever exceed that limit — even by one character — declare it as `lstr` instead. `lstr` is backed by RAM rather than a packed register value, so it is slightly slower, but it can hold arbitrarily long strings.
+</Note>

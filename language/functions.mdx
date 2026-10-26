@@ -1,0 +1,97 @@
+---
+title: "Defining and Calling Functions in Nano"
+sidebarTitle: "Functions"
+description: "Define reusable functions in Nano with def. Covers syntax, arguments, return values, and how tvar scoping keeps temporary variables clean."
+---
+
+Functions let you group a sequence of statements under a name so they can be called from anywhere in your program. In Nano, functions are declared with the `def` keyword, accept any number of named arguments, and can return a value that the calling code can use directly. Their bodies are indented, matching Nano's Python-inspired style.
+
+## Syntax
+
+```text
+def <name> (<args>):
+```
+
+- `<name>` — the identifier you will use to call the function. Must start with a letter or underscore.
+- `<args>` — a comma-separated list of parameter names. Omit the parentheses' contents for a zero-argument function, but the parentheses themselves are always required.
+
+```text
+def greet ():
+    var str msg = 'hello'
+
+def add (a, b):
+    var num result = a
+```
+
+## Function Bodies
+
+Everything indented beneath the `def` line belongs to the function body. Like the rest of Nano, each statement occupies its own line.
+
+```text
+def clamp (val, lo, hi):
+    var num result = val
+    # clamp logic would go here
+```
+
+## Return Values
+
+A function can return a value to the code that called it. The returned value can be assigned directly to a variable in the calling scope:
+
+```text
+def double (n):
+    var num out = n
+
+var num answer = double(21)
+```
+
+## Calling a Function
+
+Use the function name followed by its arguments in parentheses. The result can be captured in a variable or used as an operand:
+
+```text
+def add (a, b):
+    var num result = a
+
+var num total = add(10, 32)
+```
+
+## tvar Cleanup Inside Functions
+
+Variables declared with `tvar` are *temporary*: they exist only for the lifetime of the current function or script. When a function ends, the compiler calls `purge_tvars`, which removes every `tvar` entry from the variable table and compacts the remaining variables. This means temporary working values do not leak out of a function and do not consume table space after the function returns.
+
+```text
+def compute (x):
+    tvar num scratch = x   # lives only inside compute
+    var num out = scratch   # out is a permanent variable
+
+# scratch is gone here; out is still accessible
+```
+
+<Steps>
+  <Step title="Declare the function">
+    Write `def name (args):` on its own line. Every following indented line is part of the body.
+  </Step>
+  <Step title="Write the body">
+    Use any Nano statements — `var`, `tvar`, `list`, control flow, or other function calls — indented beneath the `def` line.
+  </Step>
+  <Step title="Return a value (optional)">
+    Assign the result to a named variable inside the function. The calling code can capture that return value in a variable of its own.
+  </Step>
+  <Step title="Call the function">
+    Use `name(args)` wherever you need the result. Assign it to a variable to keep the return value.
+  </Step>
+</Steps>
+
+## Example: Adding Two Numbers
+
+```text
+def add (a, b):
+    var num result = a
+    # b would be added to result here
+
+var num total = add(40, 2)
+```
+
+<Note>
+  Full function code generation is under active development. The compiler currently emits a `; TODO: statement type 10` placeholder for `def` bodies. The parsing infrastructure — including argument lists, scoping, and `tvar` cleanup — is in place, and generated output will be available in an upcoming release.
+</Note>

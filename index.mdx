@@ -1,20 +1,59 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Nano: Human-Readable Language That Compiles to Native x86-64"
+sidebarTitle: "Home"
+description: "Nano is a Python-like programming language that compiles to x86-64 assembly via NASM, producing fast native Windows executables from clean, readable source code."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+Nano is a programming language built around one idea: code should be as readable as plain English while still compiling down to efficient native machine code. If you know Python, you already know most of Nano — the syntax borrows heavily from it, and most simple Python scripts translate directly. The compiler takes your `.n` source files and emits NASM-ready x86-64 assembly that assembles into standalone Windows executables.
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="book-open" href="/introduction">
+    Learn what Nano is, how the compiler works, and when to choose it over other languages.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Write and compile your first Nano program in minutes.
+  </Card>
+  <Card title="Language Reference" icon="code" href="/language/variables">
+    Complete reference for variables, control flow, loops, booleans, functions, lists, and more.
+  </Card>
+  <Card title="Building the Compiler" icon="hammer" href="/building-the-compiler">
+    Assemble the Nano compiler from source using NASM and the Windows linker.
+  </Card>
+</CardGroup>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## What makes Nano different
+
+<CardGroup cols={2}>
+  <Card title="Python-Like Syntax" icon="python">
+    Familiar `if/elif/else`, `while`, `for`, `def`, and `import` keywords with minimal syntactic noise.
+  </Card>
+  <Card title="Compiles to Native Code" icon="microchip">
+    Each `.n` file produces a `.nasm` file that assembles directly to a 64-bit Windows PE executable — no runtime, no VM.
+  </Card>
+  <Card title="Strong Type System" icon="shield-check">
+    Four scalar types (`num`, `str`, `lstr`, `list`) enforced at compile time, with automatic size limits and type-mismatch errors.
+  </Card>
+  <Card title="Scoped Temporaries" icon="clock">
+    `tvar` variables live only for the duration of the current function or script, keeping the symbol table clean automatically.
+  </Card>
+  <Card title="Built-in Filesystem API" icon="folder">
+    `fs.*` functions for creating, reading, writing, moving, securing, and inspecting files and directories — no external libraries needed.
+  </Card>
+  <Card title="Direct Memory Access" icon="memory">
+    `mem.*` functions let you read, write, copy, and clear arbitrary memory addresses for low-level programming.
+  </Card>
+</CardGroup>
+
+## Get started in three steps
+
+<Steps>
+  <Step title="Build the compiler">
+    Assemble `nlang_main.nasm` with NASM and link it against `kernel32.lib` to produce `nlang.exe`. See [Building the Compiler](/building-the-compiler) for the full command.
+  </Step>
+  <Step title="Write a Nano script">
+    Create a `.n` file and start writing. Variables, control flow, and functions all follow Python conventions — see the [Language Reference](/language/variables) to get comfortable quickly.
+  </Step>
+  <Step title="Compile and run">
+    Run `nlang.exe yourscript.n` to produce `yourscript.nasm`, then assemble with NASM and link to get a native executable. The [Quickstart](/quickstart) walks through a complete example end-to-end.
+  </Step>
+</Steps>

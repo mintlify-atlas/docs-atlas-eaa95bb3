@@ -1,0 +1,150 @@
+---
+title: "Direct Memory Access in Nano with mem.*"
+sidebarTitle: "Memory"
+description: "Read, write, copy, and clear arbitrary memory addresses in Nano using the mem.get, mem.set, mem.clear, and mem.copy built-in functions."
+---
+
+The `mem.*` family of built-in functions gives Nano programs direct, low-level access to arbitrary memory addresses. You can read values from specific addresses into variables, write values back, zero-initialise memory ranges, and copy blocks of data from one address to another — all without importing any external library. These functions are particularly useful when interfacing with hardware registers, managing raw buffers, or performing manual memory layout work in performance-critical code.
+
+<Warning>
+  Passing an invalid or unmapped memory address to any `mem.*` function will cause an immediate access violation and crash your program. Always verify that the addresses you use refer to memory your process actually owns before calling these functions.
+</Warning>
+
+## mem.get
+
+Reads the value stored at the given memory address and returns it. `mem.get` is used as a **value expression** on the right-hand side of a variable declaration — it cannot be used as a standalone statement.
+
+**Syntax**
+
+```text
+var num <name> = mem.get 0xXXXXX
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `0xXXXXX` | The hexadecimal memory address to read from. |
+
+**Example**
+
+```text
+var num val = mem.get 0xF000
+```
+
+This declares a numeric variable `val` and initialises it with whatever value currently sits at address `0xF000`.
+
+---
+
+## mem.set
+
+Writes a value to the given memory address, overwriting whatever was there before.
+
+**Syntax**
+
+```text
+mem.set 0xXXXXX = <value>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `0xXXXXX` | The hexadecimal memory address to write to. |
+| `<value>` | The value to store at that address (a variable or numeric literal). |
+
+**Example**
+
+```text
+var num val = 42
+mem.set 0xF000 = val
+```
+
+After execution, the value `42` is stored at address `0xF000`.
+
+---
+
+## mem.clear
+
+Zeroes every byte in the memory range from address `X` (inclusive) to address `Y` (inclusive). This is useful for zero-initialising buffers before use.
+
+**Syntax**
+
+```text
+mem.clear 0xXXXXX:0xYYYYY
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `0xXXXXX` | The start address of the range to clear. |
+| `0xYYYYY` | The end address of the range to clear. |
+
+**Example**
+
+```text
+mem.clear 0xF000:0xF100
+```
+
+Every byte from `0xF000` to `0xF100` is set to zero.
+
+---
+
+## mem.copy
+
+Copies the block of memory at address `X` to address `Y`. The source region is left unchanged.
+
+**Syntax**
+
+```text
+mem.copy 0xXXXXX, 0xYYYYY
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `0xXXXXX` | The source address to copy from. |
+| `0xYYYYY` | The destination address to copy to. |
+
+**Example**
+
+```text
+mem.copy 0xF000, 0xF100
+```
+
+The memory at `0xF000` is duplicated to `0xF100`.
+
+---
+
+## Quick Reference
+
+The table below summarises all four `mem.*` operations and their syntax signatures.
+
+| Function | Syntax | Description |
+|----------|--------|-------------|
+| `mem.get` | `var num <name> = mem.get 0xXXXXX` | Reads the value at the address into a variable. |
+| `mem.set` | `mem.set 0xXXXXX = <value>` | Writes a value to the given address. |
+| `mem.clear` | `mem.clear 0xXXXXX:0xYYYYY` | Zeroes every byte in the address range X–Y. |
+| `mem.copy` | `mem.copy 0xXXXXX, 0xYYYYY` | Copies memory from address X to address Y. |
+
+<Note>
+  All memory addresses must be written with the `0x` hexadecimal prefix (e.g. `0xF000`). Decimal addresses are not accepted by the `mem.*` functions.
+</Note>
+
+---
+
+## Typical Use Cases
+
+<CardGroup cols={3}>
+  <Card title="Hardware Registers" icon="microchip">
+    Read from and write to memory-mapped hardware registers at fixed addresses to control peripheral devices directly from Nano code.
+  </Card>
+  <Card title="Buffer Initialisation" icon="eraser">
+    Use `mem.clear` to zero-initialise a memory range before writing to it, preventing stale data from causing undefined behaviour.
+  </Card>
+  <Card title="Low-Level Data Manipulation" icon="wrench">
+    Use `mem.copy` to duplicate data structures or `mem.set` to patch values at known offsets in a binary layout.
+  </Card>
+</CardGroup>

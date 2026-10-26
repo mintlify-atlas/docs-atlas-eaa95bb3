@@ -1,0 +1,528 @@
+---
+title: "File System Operations in Nano with fs.*"
+sidebarTitle: "Filesystem"
+description: "Create, read, write, move, compress, and secure files and directories in Nano using the built-in fs.* function family — no external libraries required."
+---
+
+The `fs.*` family of built-in functions gives Nano programs a complete file system API straight out of the box. You can create, read, write, move, and delete files, manage directories, inspect metadata, compress archives, and control permissions and security — all without importing any external library. Every `fs.*` function is a first-class statement in the language and works directly on the host Windows file system.
+
+<Note>
+  Path arguments follow standard Windows path conventions. Both backslashes (`C:\Users\nano\file.txt`) and forward slashes (`C:/Users/nano/file.txt`) are accepted.
+</Note>
+
+---
+
+## File I/O
+
+### fs.create
+
+Creates a new empty file at the specified path.
+
+**Syntax**
+
+```text
+fs.create <path>
+```
+
+**Example**
+
+```text
+fs.create "output.txt"
+```
+
+---
+
+### fs.delete
+
+Deletes the file at the specified path.
+
+**Syntax**
+
+```text
+fs.delete <path>
+```
+
+**Example**
+
+```text
+fs.delete "output.txt"
+```
+
+---
+
+### fs.move
+
+Moves a file from a source path to a destination path.
+
+**Syntax**
+
+```text
+fs.move <src>, <dst>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<src>` | The path of the file to move. |
+| `<dst>` | The destination path. |
+
+**Example**
+
+```text
+fs.move "draft.txt", "final/draft.txt"
+```
+
+---
+
+### fs.copy
+
+Copies a file from a source path to a destination path.
+
+**Syntax**
+
+```text
+fs.copy <src>, <dst>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<src>` | The path of the file to copy. |
+| `<dst>` | The destination path for the copy. |
+
+**Example**
+
+```text
+fs.copy "config.txt", "config.bak"
+```
+
+---
+
+### fs.rename
+
+Renames a file.
+
+**Syntax**
+
+```text
+fs.rename <old>, <new>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<old>` | The current file name or path. |
+| `<new>` | The new file name or path. |
+
+**Example**
+
+```text
+fs.rename "report_v1.txt", "report_v2.txt"
+```
+
+---
+
+### fs.read
+
+Reads the contents of a file and returns them. Use the return value to initialise a variable.
+
+**Syntax**
+
+```text
+var str <name> = fs.read <path>
+```
+
+**Example**
+
+```text
+var str contents = fs.read "config.txt"
+```
+
+---
+
+### fs.write
+
+Writes a value to a file, replacing the entire current contents.
+
+**Syntax**
+
+```text
+fs.write <path>, <value>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<path>` | The path of the file to write to. |
+| `<value>` | The value to write (a variable or string literal). |
+
+**Example**
+
+```text
+var str msg = "Hello, Nano!"
+fs.write "output.txt", msg
+```
+
+---
+
+### fs.append
+
+Appends a value to the end of a file without overwriting existing content.
+
+**Syntax**
+
+```text
+fs.append <path>, <value>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<path>` | The path of the file to append to. |
+| `<value>` | The value to append. |
+
+**Example**
+
+```text
+fs.append "log.txt", "New entry added."
+```
+
+---
+
+## Directory Operations
+
+### fs.list
+
+Lists the contents of a directory and returns them.
+
+**Syntax**
+
+```text
+fs.list <dir>
+```
+
+**Example**
+
+```text
+fs.list "C:/Projects"
+```
+
+---
+
+### fs.mkdir
+
+Creates a new directory at the specified path.
+
+**Syntax**
+
+```text
+fs.mkdir <path>
+```
+
+**Example**
+
+```text
+fs.mkdir "output/reports"
+```
+
+---
+
+### fs.rmdir
+
+Removes a directory at the specified path.
+
+**Syntax**
+
+```text
+fs.rmdir <path>
+```
+
+**Example**
+
+```text
+fs.rmdir "output/old"
+```
+
+---
+
+### fs.getdir
+
+Returns the current working directory as a string value. Takes no arguments.
+
+**Syntax**
+
+```text
+var str <name> = fs.getdir
+```
+
+**Example**
+
+```text
+var str cwd = fs.getdir
+```
+
+---
+
+### fs.exists
+
+Returns `true` if the file or directory at the given path exists, `false` otherwise.
+
+**Syntax**
+
+```text
+fs.exists <path>
+```
+
+**Example**
+
+```text
+fs.exists "config.txt"
+```
+
+<Tip>
+  Combine `fs.exists` with an `if` block to create files only when they are missing, preventing accidental overwrites.
+</Tip>
+
+---
+
+### fs.isdir
+
+Returns `true` if the path points to a directory, `false` otherwise.
+
+**Syntax**
+
+```text
+fs.isdir <path>
+```
+
+**Example**
+
+```text
+fs.isdir "output/reports"
+```
+
+---
+
+## File Metadata
+
+### fs.getsize
+
+Returns the size of a file in bytes.
+
+**Syntax**
+
+```text
+var num <name> = fs.getsize <path>
+```
+
+**Example**
+
+```text
+var num sz = fs.getsize "archive.zip"
+```
+
+---
+
+### fs.gettime
+
+Returns the last-modified timestamp of a file.
+
+**Syntax**
+
+```text
+var num <name> = fs.gettime <path>
+```
+
+**Example**
+
+```text
+var num ts = fs.gettime "log.txt"
+```
+
+---
+
+## Compression
+
+### fs.zip
+
+Compresses a file or directory into a zip archive at the destination path.
+
+**Syntax**
+
+```text
+fs.zip <src>, <dst>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<src>` | The file or directory to compress. |
+| `<dst>` | The path for the resulting `.zip` archive. |
+
+**Example**
+
+```text
+fs.zip "output/reports", "output/reports.zip"
+```
+
+---
+
+### fs.unzip
+
+Extracts a zip archive to the destination path.
+
+**Syntax**
+
+```text
+fs.unzip <src>, <dst>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<src>` | The path of the `.zip` file to extract. |
+| `<dst>` | The directory to extract the contents into. |
+
+**Example**
+
+```text
+fs.unzip "output/reports.zip", "output/restored"
+```
+
+---
+
+## Permissions and Security
+
+### fs.secure / fs.unsecure
+
+Encrypts or decrypts a file in-place.
+
+**Syntax**
+
+```text
+fs.secure <path>
+fs.unsecure <path>
+```
+
+**Example**
+
+```text
+fs.secure "private/keys.txt"
+fs.unsecure "private/keys.txt"
+```
+
+---
+
+### fs.getperm / fs.setperm / fs.modperm
+
+Read or modify the permissions of a file or directory.
+
+**Syntax**
+
+```text
+var num <name> = fs.getperm <path>
+fs.setperm <path>, <value>
+fs.modperm <path>, <value>
+```
+
+**Parameters**
+
+| Parameter | Description |
+|-----------|-------------|
+| `<path>` | The target file or directory. |
+| `<value>` | The permission value to set or apply. |
+
+**Example**
+
+```text
+var num perms = fs.getperm "script.nano"
+fs.setperm "script.nano", 755
+fs.modperm "script.nano", 644
+```
+
+---
+
+### fs.getowner / fs.setowner
+
+Read or change the owner of a file or directory.
+
+**Syntax**
+
+```text
+var str <name> = fs.getowner <path>
+fs.setowner <path>, <value>
+```
+
+**Example**
+
+```text
+var str owner = fs.getowner "config.txt"
+fs.setowner "config.txt", "admin"
+```
+
+---
+
+### fs.getsecure / fs.setsecure
+
+Read or set the security status of a file or directory.
+
+**Syntax**
+
+```text
+var str <name> = fs.getsecure <path>
+fs.setsecure <path>, <value>
+```
+
+**Example**
+
+```text
+var str sec = fs.getsecure "private/keys.txt"
+fs.setsecure "private/keys.txt", "encrypted"
+```
+
+<Warning>
+  Always call `fs.unsecure` on an encrypted file before attempting to read or modify its contents, otherwise the returned data will be in its encrypted form.
+</Warning>
+
+---
+
+## Full Function Reference
+
+The table below lists every `fs.*` function with its syntax signature and a one-line description.
+
+| Function | Syntax | Description |
+|----------|--------|-------------|
+| `fs.create` | `fs.create <path>` | Creates a new empty file. |
+| `fs.delete` | `fs.delete <path>` | Deletes a file. |
+| `fs.move` | `fs.move <src>, <dst>` | Moves a file from src to dst. |
+| `fs.copy` | `fs.copy <src>, <dst>` | Copies a file from src to dst. |
+| `fs.rename` | `fs.rename <old>, <new>` | Renames a file. |
+| `fs.read` | `var str x = fs.read <path>` | Reads and returns a file's contents. |
+| `fs.write` | `fs.write <path>, <value>` | Overwrites a file with a value. |
+| `fs.append` | `fs.append <path>, <value>` | Appends a value to the end of a file. |
+| `fs.list` | `fs.list <dir>` | Lists the contents of a directory. |
+| `fs.mkdir` | `fs.mkdir <path>` | Creates a new directory. |
+| `fs.rmdir` | `fs.rmdir <path>` | Removes a directory. |
+| `fs.getdir` | `var str x = fs.getdir` | Returns the current working directory. |
+| `fs.exists` | `fs.exists <path>` | Returns true if the path exists. |
+| `fs.isdir` | `fs.isdir <path>` | Returns true if the path is a directory. |
+| `fs.getsize` | `var num x = fs.getsize <path>` | Returns the file size in bytes. |
+| `fs.gettime` | `var num x = fs.gettime <path>` | Returns the last-modified timestamp. |
+| `fs.zip` | `fs.zip <src>, <dst>` | Compresses a file or directory to a zip. |
+| `fs.unzip` | `fs.unzip <src>, <dst>` | Extracts a zip archive to a directory. |
+| `fs.secure` | `fs.secure <path>` | Encrypts a file in-place. |
+| `fs.unsecure` | `fs.unsecure <path>` | Decrypts a file in-place. |
+| `fs.getperm` | `var num x = fs.getperm <path>` | Returns the permissions of a file or directory. |
+| `fs.setperm` | `fs.setperm <path>, <value>` | Sets permissions on a file or directory. |
+| `fs.modperm` | `fs.modperm <path>, <value>` | Modifies permissions on a file or directory. |
+| `fs.getowner` | `var str x = fs.getowner <path>` | Returns the owner of a file or directory. |
+| `fs.setowner` | `fs.setowner <path>, <value>` | Sets the owner of a file or directory. |
+| `fs.getsecure` | `var str x = fs.getsecure <path>` | Returns the security status of a path. |
+| `fs.setsecure` | `fs.setsecure <path>, <value>` | Sets the security status of a path. |

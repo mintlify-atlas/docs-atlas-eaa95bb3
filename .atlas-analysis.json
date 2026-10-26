@@ -1,0 +1,121 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Nano",
+  "projectDescription": "Nano is a human-readable coding language that compiles to x86-64 assembly (NASM), designed to be simple and Python-like while producing native Windows executables.",
+  "theme": "aspen",
+  "primaryColor": "#3B82F6",
+  "lightColor": "#93C5FD",
+  "darkColor": "#1E40AF",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "building-the-compiler"
+            ]
+          },
+          {
+            "group": "Language Reference",
+            "pages": [
+              "language/variables",
+              "language/control-flow",
+              "language/loops",
+              "language/booleans",
+              "language/functions",
+              "language/lists",
+              "language/strings",
+              "language/comments",
+              "language/imports"
+            ]
+          },
+          {
+            "group": "Standard Operations",
+            "pages": [
+              "stdlib/memory",
+              "stdlib/filesystem"
+            ]
+          },
+          {
+            "group": "Compiler Internals",
+            "pages": [
+              "internals/architecture",
+              "internals/error-codes",
+              "internals/output-format"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Python-like syntax that compiles to native x86-64 machine code via NASM",
+    "Strong type system with num, str, lstr, and list types",
+    "Temporary variables (tvar) with automatic scoped cleanup",
+    "Built-in boolean logic expressions with chained bool operations",
+    "Memory manipulation via mem.* functions",
+    "File system operations via fs.* functions",
+    "Import system supporting local files and remote GitHub sources",
+    "Named package files (.ns) with reserved namespace support",
+    "Compiles .n / .nc / .ns source files to .nasm output on Windows x64"
+  ],
+  "publicApiSurface": [
+    "var num|str|lstr <name> [= <value>]",
+    "tvar num|str|lstr <name> [= <value>]",
+    "list num|str <name>",
+    "list.<name>.append <value>",
+    "list.<name>.insert <index>, <value>",
+    "list.<name>.remove <index>",
+    "list.<name>.clear",
+    "list.<name>.sort",
+    "list.<name>[<index>]",
+    "list.<name>.length",
+    "<str>.length",
+    "<str>[<index>]",
+    "if <operand> <op> <operand>:",
+    "elif <operand> <op> <operand>:",
+    "else:",
+    "while <operand> <op> <operand>:",
+    "until <operand> <op> <operand>:",
+    "for <var> = <value>:",
+    "bool <operand> <op> <operand>",
+    "bool .out <logic> <operand>",
+    "def <name> (<args>):",
+    "import <name>",
+    "mem.get 0xADDRESS",
+    "mem.set 0xADDRESS = <value>",
+    "mem.clear 0xSTART:0xEND",
+    "mem.copy 0xSRC, 0xDST",
+    "fs.create <path>",
+    "fs.delete <path>",
+    "fs.move <src>, <dst>",
+    "fs.copy <src>, <dst>",
+    "fs.rename <old>, <new>",
+    "fs.read <path>",
+    "fs.write <path>, <value>",
+    "fs.append <path>, <value>",
+    "fs.list <dir>",
+    "fs.exists <path>",
+    "fs.isdir <path>",
+    "fs.mkdir <path>",
+    "fs.rmdir <path>",
+    "fs.getdir",
+    "fs.getsize <path>",
+    "fs.gettime <path>",
+    "fs.zip <src>, <dst>",
+    "fs.unzip <src>, <dst>",
+    "fs.secure <path>",
+    "fs.unsecure <path>",
+    "fs.getperm <path>",
+    "fs.setperm <path>, <value>",
+    "fs.modperm <path>, <value>",
+    "fs.getowner <path>",
+    "fs.setowner <path>, <value>",
+    "fs.getsecure <path>",
+    "fs.setsecure <path>, <value>"
+  ]
+}

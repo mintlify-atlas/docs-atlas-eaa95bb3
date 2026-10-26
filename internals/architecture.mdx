@@ -1,0 +1,165 @@
+---
+title: "Nano Compiler Architecture: Four-File NASM Pipeline"
+sidebarTitle: "Architecture"
+description: "Explore how the Nano compiler is structured across four NASM source files: the opener, front-end, back-end, and entry point that together translate .n to native code."
+---
+
+The Nano compiler is 100% hand-written x86-64 NASM assembly, split across four source files that are designed to be read and modified by humans. There are no generated tables, no build-time code generators, and no external libraries beyond the Windows kernel32 API. All four files are woven together at assemble-time via `%include` directives in `nlang_main.nasm`, producing a single flat translation unit that NASM turns into a native Windows PE executable.
+
+## Pipeline Overview
+
+The compiler runs as a linear four-stage pipeline. Each stage feeds into the next; no stage is re-entered and no IR is produced between them — the front-end talks directly to the back-end through shared `.bss` descriptor blocks.
+
+<Steps>
+  <Step title="nlang_opener — Command-line parsing and file loading">
+    `main_opener` is the first function called. It uses `GetCommandLineA` to retrieve the full command line, skips the quoted or unquoted executable name, extracts the path argument, and copies it into `path_buf` (up to 520 bytes). The extension is validated by scanning backward for the last `.`: only `.n`, `.nc`, and `.ns` are accepted; anything else exits with code `1`.
+
+    Once the path is validated, the file is opened with `CreateFileA` (read-only, `OPEN_EXISTING`) and its entire contents are read with a single `ReadFile` call into the 6 MB `.bss` buffer `buffer`. If the file is too large to fit (≥ 6 MB), the opener also returns failure. On success it returns `EAX = 0`; on any failure it returns `EAX = 1`.
+
+    ```nasm
+    %define BUFFER_SIZE 6291456   ; 6 MB
+    %define PATH_MAX    520
+
+    section .bss
+        path_buf  resb PATH_MAX
+        buffer    resb BUFFER_SIZE
+    ```
+  </Step>
+
+  <Step title="nlang_compiler — Lexing, keyword matching, and parsing">
+    `compile` is the front-end. It initialises five non-volatile registers as a working state machine and then loops over the input character by character, scanning whole tokens before dispatching on them. Comments (`#` for line, `###…###` for block) are consumed without producing output. When a full token is scanned, `match_keyword` checks it against the keyword table and the `list.` / `mem.` / `fs.` prefixes; the result is stored in `R14` as an `FN_*` flag.
+
+    Declarations (`var`, `tvar`, `list`) immediately consume the rest of the statement via `parse_var_decl` or `parse_list_decl`, write the variable into `var_table`, and call the appropriate writer. All other statement types set `R14` and are dispatched to `write_current_func` when the newline is reached.
+
+    At end-of-file, `purge_tvars` removes all `tvar` entries from the table, and `out_end` triggers the back-end to finalise and write the output file.
+  </Step>
+
+  <Step title="nlang_writer — NASM text emission">
+    The back-end emits human-readable NASM source text into a 1 MB in-memory buffer (`out_buf`). Every `write_*` routine appends fixed string snippets (stored as `STR` macros in `.data`) interleaved with computed values — label names, decimal literals, and byte arrays — using the `emit_bytes` / `emit_dec` primitives.
+
+    Variable declarations go to `.bss` (num/str) or `.data` (lstr). List declarations go to `.bss` as `resq LIST_CAP + 1`. All labels are prefixed with `v_`. Runtime helpers are tracked through the `rt_need` bitmask; only helpers whose bit is set are appended after the footer.
+  </Step>
+
+  <Step title="out_end / out_flush — Writing the output file">
+    `out_end` appends the program footer and any required runtime helpers, then falls through to `out_flush`. `out_flush` calls `build_out_path` to replace the input extension with `.nasm` (e.g. `script.n` → `script.nasm`), creates the output file with `CreateFileA` (`CREATE_ALWAYS`), writes the buffer with `WriteFile`, and verifies that the number of bytes written matches `out_len`. A mismatch or API failure exits with error code `ERR_WRITE_FAILED` (exit `0x10E`).
+
+    ```nasm
+    ; out_path = path_buf with its extension replaced by ".nasm"
+    mov  dword [r9], '.nas'
+    mov  word  [r9 + 4], 'm'    ; 'm', 0
+    ```
+  </Step>
+</Steps>
+
+## Entry Point: `nlang_main.nasm`
+
+`nlang_main.nasm` is the root file. It defines `bits 64`, `default rel`, the `global main` / `extern ExitProcess` declarations, and then `%include`s the other three files at the **top level** (outside any label) so their own `section` and `extern` directives are seen by NASM. The `main` label itself is tiny:
+
+```nasm
+main:
+    sub  rsp, 40                ; 32 shadow + 8 -> 16-byte aligned
+    call main_opener            ; eax = 0 ok, 1 failure
+    test eax, eax
+    jnz  .exit                  ; skip compilation if the file couldn't be read
+    call compile                ; eax = 0 ok (errors exit via `error`)
+.exit:
+    mov  ecx, eax
+    call ExitProcess            ; never returns
+```
+
+<Note>
+  The `%include` directives must appear at file level, not inside a label. Each included file carries its own `section` and `extern` directives, and NASM only allows those at the top level. Placing them inside `main:` would cause the assembler to treat the section-switch directives as executable code.
+</Note>
+
+## Register Map inside `compile`
+
+Five Windows non-volatile registers are dedicated to compiler state for the entire duration of the `compile` function. Because they are non-volatile, every subroutine called from `compile` is free to call further Windows API functions without disturbing them.
+
+| Register | Role |
+|----------|------|
+| `RSI` | Cursor — points to the next unread byte in `buffer` |
+| `R12` | End-of-input — `buffer + bytes_read`; the loop stops when `RSI >= R12` |
+| `R13` | Comment state — `CMT_NONE` (0), `CMT_LINE` (1), or `CMT_BLOCK` (2) |
+| `R14` | Statement flag — holds the `FN_*` value of the keyword that opened the current statement; `0` at the start of a new line |
+| `R15` | Variable table base — `lea r15, [var_table]`; passed implicitly to all helpers that need it |
+
+Two additional registers are used as scratch within the token-scanning loop:
+
+| Register | Role |
+|----------|------|
+| `RDI` | Start of the current token (set when `.token` is entered) |
+| `RBX` | Error code — loaded with an `ERR_*` constant just before `jmp error` |
+
+## Variable Table Layout
+
+The variable table lives in a 64 KB `.bss` region called `var_table`. Its layout is a compact, sequential byte stream:
+
+```
+[count: 1 byte]
+  for each variable:
+    [name_len: 1 byte]
+    [type:     1 byte]
+    [name:     name_len bytes]
+    [value:    8 bytes  (num/str/list)
+               OR  8-byte big-endian length + payload bytes  (lstr)]
+```
+
+The `type` byte is split into two fields:
+
+| Bits | Meaning |
+|------|---------|
+| Bit 7 (`VAR_TEMP = 0x80`) | Set for `tvar` — purged by `purge_tvars` at end-of-scope |
+| Bits 0–6 (`VAR_TYPE_MASK = 0x7F`) | `0` = num, `1` = str, `2` = lstr, `3` = list num, `4` = list str |
+
+A maximum of 255 variables can be stored (the count is a single byte). The table also has a hard limit of 64 KB total; attempting to add a variable that would exceed either limit raises `ERR_TABLE_FULL` (exit `0x10C`).
+
+<Note>
+  Long strings (`lstr`) are stored in the table with their name and type only — the actual payload bytes live in `.data` of the **generated** NASM file, not in the compiler's own table. The 8-byte value field for an lstr in the table is always zero.
+</Note>
+
+## `FN_*` Keyword Constants
+
+`R14` holds one of these values while a statement is being parsed. `FN_NONE` (0) means the compiler is at the start of a new line.
+
+| Constant | Value | Keyword / Trigger |
+|----------|-------|-------------------|
+| `FN_NONE` | 0 | Start of line / no active statement |
+| `FN_IF` | 2 | `if` |
+| `FN_ELIF` | 3 | `elif` |
+| `FN_ELSE` | 4 | `else` |
+| `FN_VAR` | 5 | `var` |
+| `FN_WHILE` | 6 | `while` |
+| `FN_UNTIL` | 7 | `until` |
+| `FN_FOR` | 8 | `for` |
+| `FN_BOOL` | 9 | `bool` |
+| `FN_DEF` | 10 | `def` |
+| `FN_IMPORT` | 11 | `import` |
+| `FN_MEM` | 12 | `mem.` prefix |
+| `FN_FS` | 13 | `fs.` prefix |
+| `FN_TVAR` | 14 | `tvar` |
+| `FN_LISTDECL` | 15 | `list` (declaration) |
+| `FN_LISTOP` | 16 | `list.` prefix (operation) |
+
+Keywords are matched by `match_keyword`, which walks the `kw_table` byte stream (each entry is `[length][name bytes][dw flag]`, terminated by a zero length byte). The `list.`, `mem.`, and `fs.` prefixes are matched separately after the table walk fails, since they embed the variable name inside the token.
+
+## Runtime Helper System
+
+The back-end uses a lazy-emission model so that the generated NASM file only contains the helpers it actually needs. A 32-bit bitmask `rt_need` (in `.bss`) is OR'd by the writer each time a helper is required:
+
+| Bit constant | Value | Helper emitted |
+|--------------|-------|----------------|
+| `RT_STR_LEN` | `0x001` | `rt_str_len` — length of a packed str |
+| `RT_STR_IDX` | `0x002` | `rt_str_idx` — character at index in a str |
+| `RT_LSTR_IDX` | `0x004` | `rt_lstr_idx` — character at index in an lstr |
+| `RT_LIST_APPEND` | `0x008` | `rt_list_append` — append a value to a list |
+| `RT_LIST_INSERT` | `0x010` | `rt_list_insert` — insert at index |
+| `RT_LIST_REMOVE` | `0x020` | `rt_list_remove` — remove at index |
+| `RT_LIST_GET` | `0x040` | `rt_list_get` — read a list element |
+| `RT_SORT_NUM` | `0x080` | `rt_list_sort_num` — insertion sort, ascending signed |
+| `RT_SORT_STR` | `0x100` | `rt_list_sort_str` — insertion sort, alphabetical |
+
+If `rt_need` is zero after the main body is emitted, `out_end` jumps directly to `out_flush`, adding no extra code at all. When at least one bit is set, a shared preamble `s_rt_common` is emitted first — it defines `rt_err_full` (exit `0x201`) and `rt_err_range` (exit `0x202`) — followed only by the helpers whose bits are set.
+
+<Note>
+  The entire Nano compiler source is written to be read by humans, not generated by a tool. Labels are meaningful English words, comment blocks explain intent, and the register plan is documented in a comment at the top of each major function. This is a deliberate design principle of the project.
+</Note>

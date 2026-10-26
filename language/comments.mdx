@@ -1,0 +1,70 @@
+---
+title: "Comments in Nano: Line and Block Syntax"
+sidebarTitle: "Comments"
+description: "Add single-line and multi-line comments in Nano using # and ###. Includes rules for inline comments and the block comment termination requirement."
+---
+
+Comments let you annotate your Nano source code with explanations, todos, and context that the compiler ignores entirely. Nano supports two comment forms: a single-line variant that starts with `#` and a multi-line block variant that opens and closes with `###`. Understanding how the compiler distinguishes between a `#` comment and a `###` block comment — and how both interact with string literals — will save you from a subtle but common mistake.
+
+## Line Comments
+
+A single `#` begins a line comment. Everything from the `#` to the end of the line is ignored by the compiler.
+
+```text
+var num x = 42     # this is a line comment
+# this entire line is a comment
+```
+
+Line comments end automatically at the newline character. No closing marker is required.
+
+## Block Comments
+
+Three consecutive hash characters `###` open a block comment. The block continues — spanning as many lines as needed — until the compiler encounters another `###`.
+
+```text
+###
+This is a multi-line block comment.
+It can span as many lines as you like.
+The compiler ignores everything until the closing ###.
+###
+```
+
+Block comments can also appear inline, though they must still be closed on some later line:
+
+```text
+var num y = 10   ### inline block comment ### var num z = 20
+```
+
+## Comments Inside String Literals
+
+A `#` character that appears inside a string literal is **not** treated as a comment. The compiler is in string-parsing mode until the matching closing quote is found, so hash characters within quotes are simply part of the string value.
+
+```text
+var str v = 'hello# friendly greeting #!'
+```
+
+Here `hello# friendly greeting #!` is the full string value. Neither `#` starts a comment because both sit inside the single-quoted literal.
+
+## Unterminated Block Comments
+
+If a `###` block is opened but never closed, the compiler reaches the end of the file while still in block-comment state and raises `ERR_UNTERMINATED_CMT` (error code 6). This causes the compilation to exit with process code `0x106`.
+
+## Example: Both Comment Types
+
+```text
+# Step 1: declare our working variables
+var num count = 0
+var str label = 'ok'
+
+###
+Step 2: this section is temporarily disabled
+var num debug = 1
+list.scores.clear
+###
+
+var num limit = 100  # upper bound
+```
+
+<Warning>
+  An unclosed `###` block comment is a **compile error**. If you open `###` and never write a matching closing `###` before the end of the file, the compiler will exit with `ERR_UNTERMINATED_CMT`. Always pair every opening `###` with a closing `###`.
+</Warning>

@@ -1,0 +1,79 @@
+---
+title: "Nano Compiler Error Codes Reference"
+sidebarTitle: "Error Codes"
+description: "Complete reference for all Nano compiler error codes. Each error exits with code 0x100 + N. Covers causes and how to fix each error in your Nano source."
+---
+
+When the Nano compiler encounters a problem it cannot recover from, it calls the internal `error` routine, which exits the process immediately with code `0x100 + N`, where `N` is the numeric error constant. This means the lowest possible compile-error exit code is `0x101` (257) and the highest currently defined is `0x113` (275). The raw exit code is always available in the shell after the compiler returns — no log file or stderr message is produced.
+
+## Special Exit Codes
+
+These two codes are outside the `0x100 + N` scheme and have distinct meanings:
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Compilation succeeded; the `.nasm` output file was written. |
+| `1` | The compiler could not open or read the input file (wrong path, permission denied, unsupported extension, or file larger than 6 MB). |
+
+## Compile Error Reference
+
+Every code below exits the process with `0x100 + N`. The table shows the constant name as defined in `nlang_compiler.nasm`, its numeric value, the resulting exit code in hex, the condition that triggers it, and how to fix it in your Nano source.
+
+| Constant | N | Exit code | Cause | Fix |
+|----------|----|-----------|-------|-----|
+| `ERR_INVALID_VAR_SYNTAX` | 5 | `0x105` | Malformed `var`, `tvar`, or `list` statement — missing type, missing name, unexpected token after the declaration, or a number literal used as a variable name | Check that the declaration follows the form `var num\|str\|lstr name [= value]` exactly; ensure nothing unexpected follows on the same line |
+| `ERR_UNTERMINATED_CMT` | 6 | `0x106` | A `###` block comment was opened but the matching closing `###` was never found before end-of-file | Add the closing `###` to terminate the block comment |
+| `ERR_NAME_TOO_LONG` | 7 | `0x107` | An identifier is longer than 255 bytes (the length is stored in one byte in the variable table) | Shorten the variable or function name to 255 characters or fewer |
+| `ERR_BAD_VAR_TYPE` | 8 | `0x108` | The type word in a `var`/`tvar` declaration is not `num`, `str`, or `lstr`; or a `list` declaration uses a type other than `num` or `str` (lists do not support `lstr`) | Use `num`, `str`, or `lstr` for `var`/`tvar`; use `num` or `str` for `list` |
+| `ERR_STR_TOO_LONG` | 9 | `0x109` | A `str` literal contains more than 8 characters (`str` values are packed into a single 64-bit register) | Use `lstr` for strings longer than 8 characters |
+| `ERR_UNTERMINATED_STR` | 10 | `0x10A` | A string literal (single- or double-quoted) reached end-of-line or end-of-file without a closing quote | Close the string literal on the same line it was opened; Nano does not support multi-line string literals |
+| `ERR_REDECLARED` | 11 | `0x10B` | A variable or list name that already exists in the variable table is declared again | Use a different name, or remove the duplicate declaration |
+| `ERR_TABLE_FULL` | 12 | `0x10C` | The variable table has reached its limit: either 255 variables, or the 64 KB table buffer is exhausted | Reduce the number of variables; consider combining values or using lists |
+| `ERR_OUTPUT_FULL` | 13 | `0x10D` | The generated NASM text exceeds the 1 MB output buffer (`out_buf`) | Split the program into smaller files and use `import` to compose them |
+| `ERR_WRITE_FAILED` | 14 | `0x10E` | The compiler could not create or write the output `.nasm` file — `CreateFileA` returned `INVALID_HANDLE_VALUE`, `WriteFile` returned false, or the written byte count did not match | Check that the directory containing the input file is writable and that no other process has the `.nasm` file locked |
+| `ERR_RESERVED_NAME` | 15 | `0x10F` | A variable name starting with `__` (two underscores) was defined in a `.n` or `.nc` file; the `__` prefix is reserved for package files (`.ns`) | Rename the variable to avoid the `__` prefix, or move the declaration into a `.ns` package file |
+| `ERR_TYPE_MISMATCH` | 16 | `0x110` | The type of a value or operand does not match what the context requires — for example, assigning a `str` expression to a `num` variable, or passing a `num` where a `str` operand is needed | Make sure the types on both sides of an assignment or operation match |
+| `ERR_UNKNOWN_VAR` | 17 | `0x111` | An identifier used in an expression or operand position was not found in the variable table | Declare the variable with `var` or `tvar` before using it |
+| `ERR_NOT_A_LIST` | 18 | `0x112` | A `list.name.<op>` operation was used on a name that is not a `list num` or `list str` variable | Declare the variable with `list num name` or `list str name` before using list operations on it |
+| `ERR_NOT_A_STRING` | 19 | `0x113` | A `.length` or `[#]` index expression was used on a variable that is not a `str` or `lstr` | Only use `.length` and index access on `str` and `lstr` variables |
+
+<Warning>
+  When a compile error occurs, the output `.nasm` file is **not** written (or is left in a partial state from a previous run). Always check the exit code before attempting to assemble the output.
+</Warning>
+
+## Runtime Error Codes
+
+These codes are produced by the **generated program** at runtime, not by the compiler itself. They are emitted as part of the runtime helper stubs that are appended to the `.nasm` output file when the program uses list operations or string indexing.
+
+| Exit code | Meaning | Trigger |
+|-----------|---------|---------|
+| `0x201` (513) | List full | `rt_list_append` or `rt_list_insert` was called when the list already held `LIST_CAP` (1024) entries |
+| `0x202` (514) | Index out of range | `rt_list_get`, `rt_list_insert`, `rt_list_remove`, `rt_str_idx`, or `rt_lstr_idx` was called with an index ≥ the current count or length |
+
+<Note>
+  Runtime helpers are only included in the generated `.nasm` file if the program actually uses the corresponding operation. A program that never uses list operations or string indexing will contain no runtime error handling at all.
+</Note>
+
+## Reading the Exit Code
+
+<Tip>
+  On Windows, the compiler's exit code is stored in `%ERRORLEVEL%` immediately after the process returns. Use one of the following to inspect it:
+
+  **Command Prompt (cmd.exe)**
+
+  ```bash
+  nlang.exe script.n
+  echo %errorlevel%
+  ```
+
+  **PowerShell**
+
+  ```bash
+  .\nlang.exe script.n
+  $LASTEXITCODE
+  # or, to display in hex:
+  "0x{0:X}" -f $LASTEXITCODE
+  ```
+
+  For example, if the compiler exits with `267` (`0x10B`), that is `0x100 + 11`, which maps to `ERR_REDECLARED` — a variable name was declared twice in the source file.
+</Tip>

@@ -1,0 +1,117 @@
+---
+title: "Boolean Expressions with bool in Nano"
+sidebarTitle: "Booleans"
+description: "Compute compound boolean logic in Nano using the bool statement. Chain and, or, xor, nand, and not operators across multiple steps."
+---
+
+Nano's `if` statement accepts exactly one comparison — you cannot write `if x == 1 or y == 2:` directly. Compound conditions must be computed in separate steps, and that is precisely what the `bool` statement is for. Each `bool` call evaluates a logical operation and stores the result so the next `bool` call (or an `if` branch) can consume it.
+
+---
+
+## Syntax
+
+The first `bool` call in a chain takes two operands and a comparison:
+
+```text
+bool <operand> <op> <operand>
+```
+
+Each subsequent call can chain from the previous result using `.out`:
+
+```text
+bool .out <logical-op> <operand> <op> <operand>
+```
+
+Both operands follow the same rules as `if` operands: a numeric literal, a quoted string literal, or the name of a declared variable.
+
+---
+
+## The `.out` variable
+
+Every `bool` statement stores its result in a special variable named `.out`, also accessible as `bool.out` outside of a `bool` chain. The value is `1` (true) or `0` (false).
+
+- Use `.out` inside a subsequent `bool` call to chain logic.
+- Use `bool.out` inside an `if` condition to branch on the accumulated result.
+
+```text
+bool x == 5
+if bool.out == 1:
+    # x is 5
+```
+
+---
+
+## Logical operators
+
+The logical operator sits between `.out` and the right-hand comparison when chaining `bool` calls:
+
+| Operator | Meaning | Result is 1 when… |
+|----------|---------|-------------------|
+| `and` | Logical AND | Both `.out` and the new comparison are true |
+| `or` | Logical OR | Either `.out` or the new comparison is true (or both) |
+| `xor` | Logical XOR | Exactly one of `.out` or the new comparison is true |
+| `nand` | Logical NAND | `.out` AND the new comparison are **not** both true |
+| `not` | Logical NOT (modifier) | Negates the right-hand comparison before applying the operator |
+
+`not` modifies the comparison to its right, so `nand not n < 18` means: NAND where the right side is the negation of `n < 18` (i.e. `n >= 18`).
+
+---
+
+## Chaining example
+
+The following four-line chain is taken directly from the Nano example script. Each line builds on the result stored in `.out` by the previous call:
+
+```text
+bool x == 14 or x == 13
+bool .out and y == 2
+bool .out xor n >= 17
+bool .out nand not n < 18
+```
+
+Here is what each line computes:
+
+<Steps>
+
+<Step title="Line 1 — seed the chain">
+```text
+bool x == 14 or x == 13
+```
+Sets `.out` to `1` if `x` is either `13` or `14`. Otherwise `.out` is `0`.
+</Step>
+
+<Step title="Line 2 — narrow with AND">
+```text
+bool .out and y == 2
+```
+Sets `.out` to `1` only if the previous result (x is 13 or 14) **and** `y == 2` are both true.
+</Step>
+
+<Step title="Line 3 — branch with XOR">
+```text
+bool .out xor n >= 17
+```
+Sets `.out` to `1` if **exactly one** of the previous result or `n >= 17` is true — not both, not neither.
+</Step>
+
+<Step title="Line 4 — final gate with NAND NOT">
+```text
+bool .out nand not n < 18
+```
+The `not` negates `n < 18`, making the right side equivalent to `n >= 18`. The full operation then sets `.out` to `1` only when it is **not** the case that both `.out` and `n >= 18` are true simultaneously — in practice this gates through only when `n < 18`.
+</Step>
+
+</Steps>
+
+The final value in `bool.out` is `1` (true) only if all of the following hold:
+
+- `x` is `13` or `14`
+- `y` is `2`
+- `n` is greater than or equal to `17` but less than `18`
+
+Or, if any one intermediate result is false, the chain may still produce `1` depending on the operators used — review the XOR and NAND steps carefully when designing complex conditions.
+
+---
+
+<Warning>
+Boolean values **cannot** be nested directly inside an `if` statement. You must always compute compound conditions with one or more `bool` statements first, then branch on `bool.out`. Attempting to write something like `if x == 1 or y == 2:` is a syntax error in Nano.
+</Warning>

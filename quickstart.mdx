@@ -1,47 +1,123 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Nano in Minutes"
+sidebarTitle: "Quickstart"
+description: "Write and compile your first Nano program from scratch. Covers installing prerequisites, building nlang.exe, writing a .n script, and producing a native Windows executable."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
-
-<Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
-
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
-
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
-
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+This guide walks you through everything needed to write a Nano program and run it as a native Windows executable. By the end you will have installed the required tools, built the Nano compiler, written a small `.n` script, and produced a working `.exe` — all from the command line.
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Install the **Nano extension for VS Code** before you start. It provides syntax highlighting for `.n`, `.nc`, and `.ns` files, which makes spotting errors much easier as you learn the language.
 </Tip>
+
+<Steps>
+  <Step title="Install prerequisites">
+    Nano requires two things on your machine before you can compile anything:
+
+    **NASM assembler**
+    Download the latest Windows installer from [nasm.us](https://www.nasm.us) and run it. Add the NASM install directory to your `PATH` so that `nasm` is available from any command prompt. Verify the install:
+
+    ```bash
+    nasm --version
+    ```
+
+    **Windows x64**
+    Windows 11 (x64) is recommended. Earlier 64-bit versions of Windows 10 should work but are not the primary test target.
+
+    **A text editor**
+    Any plain-text editor works. VS Code is recommended for its Nano extension.
+  </Step>
+
+  <Step title="Build the Nano compiler">
+    The Nano compiler (`nlang.exe`) is itself written in x86-64 NASM assembly. You assemble and link it from four source files in the `src/main` directory of the repository.
+
+    Open a command prompt, navigate to `src/main`, and run both commands:
+
+    ```bash
+    nasm -f win64 nlang_main.nasm -o nlang.obj
+    link /subsystem:console /entry:main nlang.obj kernel32.lib
+    ```
+
+    This produces `nlang.exe` in the same directory. For a full explanation of what each source file does and how the build works, see the [Building the Compiler](/building-the-compiler) guide.
+
+    <Note>
+      Both commands must be run from the `src/main` directory. The source files use `%include` directives with relative paths (`nlang_opener.nasm`, `nlang_compiler.nasm`, `nlang_writer.nasm`), and NASM resolves those paths relative to the file being assembled. Running from any other directory will cause include errors.
+    </Note>
+  </Step>
+
+  <Step title="Write your first script">
+    Create a new file called `myscript.n` in a directory of your choice. Paste the following complete, working Nano program:
+
+    ```nano
+    # Declare a numeric variable
+    var num x = 42
+
+    # A simple if/elif/else statement
+    if x == 42:
+        # Fires when x is exactly 42
+    elif x >= 100:
+        # Fires when x is 100 or more (and x is not 42)
+    else:
+        # Fires for any other value of x
+
+    # Boolean logic using the bool function
+    # bool evaluates a condition and stores the result in bool.out (or .out)
+    bool x == 42 or x == 43
+    # .out is now 1 (true) because x is 42
+    ```
+
+    A few things to notice:
+
+    - Variables are declared with `var`, followed by a type (`num`, `str`, or `lstr`) and a name.
+    - `if`/`elif`/`else` blocks look exactly like Python — colon at the end of each clause, indented body.
+    - Boolean expressions cannot be nested directly inside `if` conditions. Use the `bool` function to evaluate compound logic in steps; the result is stored in the special variable `bool.out` (or `.out` when chaining `bool` calls).
+
+    <Note>
+      The `example_script.n` file in the `src/getting_started` directory of the repository is **intentionally broken**. It is a teaching exercise: open it, find the syntax errors, and fix them to get a feel for the language. Do not use it as a copy-paste starting point for real programs.
+    </Note>
+  </Step>
+
+  <Step title="Compile the script">
+    Run `nlang.exe` with your script as the only argument. If you built the compiler in `src/main`, either copy `nlang.exe` to your script's directory or add it to your `PATH`.
+
+    ```bash
+    nlang.exe myscript.n
+    ```
+
+    On success, the compiler exits with code `0` and produces `myscript.nasm` in the same directory as `myscript.n`. This is a complete, self-contained win64 NASM program — you can open it in a text editor to see exactly what code Nano generated.
+
+    If something goes wrong the compiler exits with a non-zero code. Exit code `1` means the file could not be opened or read; codes `0x101` and above indicate a specific compile error (see the [Building the Compiler](/building-the-compiler) guide for the full error table).
+  </Step>
+
+  <Step title="Assemble the generated NASM file">
+    Assemble `myscript.nasm` into a COFF object file:
+
+    ```bash
+    nasm -f win64 myscript.nasm -o myscript.obj
+    ```
+
+    The `-f win64` flag tells NASM to emit a 64-bit Windows object file. This step is identical for every Nano program — the generated `.nasm` file is always a win64 target.
+  </Step>
+
+  <Step title="Link into a native executable">
+    Link the object file against the Windows kernel import library to produce the final binary:
+
+    ```bash
+    link /subsystem:console /entry:main myscript.obj kernel32.lib
+    ```
+
+    This command uses the MSVC linker (`link.exe`) that ships with Visual Studio or the Build Tools for Visual Studio. MinGW's `ld` can also be used with an appropriate import library.
+
+    After linking, you will have `myscript.exe` ready to run.
+  </Step>
+
+  <Step title="Run your executable">
+    Run the program directly:
+
+    ```bash
+    myscript.exe
+    ```
+
+    Your Nano program is now a native Windows binary with no runtime dependencies. Distribute `myscript.exe` on its own — it links only against `kernel32.dll`, which is present on every Windows installation.
+  </Step>
+</Steps>

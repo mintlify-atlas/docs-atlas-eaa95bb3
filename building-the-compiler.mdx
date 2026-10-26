@@ -1,0 +1,97 @@
+---
+title: "Building the Nano Compiler from Source"
+sidebarTitle: "Build the Compiler"
+description: "Assemble nlang.exe from the four NASM source files using the NASM assembler and the MSVC or MinGW linker on Windows x64."
+---
+
+The Nano compiler (`nlang.exe`) is written entirely in hand-crafted x86-64 NASM assembly. There is no C, no higher-level language, no generated code — every byte of the compiler is human-written assembly split across four source files that each own a distinct phase of the compilation pipeline. This page explains what each file does, how to build them into a working binary, what the compiler produces, and the hard limits imposed by its fixed-size buffers.
+
+<Warning>
+  The Nano compiler currently targets **Windows x64 only**. All generated programs use the Windows x64 calling convention and link against `kernel32.lib`. A Linux port is planned but is not yet available.
+</Warning>
+
+## The Four Source Files
+
+The compiler is split across four NASM files that live in the `src/main` directory of the repository. Because `nlang_main.nasm` `%include`s the other three at file level, assembling `nlang_main.nasm` is all that is needed — NASM expands the includes inline.
+
+| File | Role |
+|------|------|
+| `nlang_main.nasm` | Entry point. Sets up the stack, calls `main_opener` to read the input file, then calls `compile` to translate it. Passes the final exit code to `ExitProcess`. |
+| `nlang_opener.nasm` | File reader. Parses the command-line argument, validates the file extension (`.n`, `.nc`, or `.ns`), opens the file with `CreateFileA`, reads up to 6 MB into a static buffer, and closes the handle. Returns `EAX = 0` on success, `1` on failure. |
+| `nlang_compiler.nasm` | Front end. Lexes the source buffer token by token, matches keywords, manages the variable table, parses `var`/`tvar`/`list` declarations and their initialisers, evaluates operand expressions, handles `bool` logic, and dispatches to the writer for each completed statement. |
+| `nlang_writer.nasm` | Back end. Emits NASM source text into a 1 MiB in-memory output buffer. Writes the win64 program header and footer, variable declarations (`.bss` slots, `.data` strings), list operations, and the runtime helper routines the generated program needs. Flushes the buffer to `<input>.nasm` when compilation completes. |
+
+## Build Commands
+
+Both commands must be run from the `src/main` directory so that the `%include` directives inside `nlang_main.nasm` can resolve the other three files by their bare filenames.
+
+<CodeGroup>
+
+```bash Assemble
+nasm -f win64 nlang_main.nasm -o nlang.obj
+```
+
+```bash Link
+link /subsystem:console /entry:main nlang.obj kernel32.lib
+```
+
+</CodeGroup>
+
+<Note>
+  Run both commands from `src/main`. The source files include each other with unqualified paths (`%include "nlang_opener.nasm"`, `%include "nlang_compiler.nasm"`, `%include "nlang_writer.nasm"`). NASM resolves `%include` paths relative to the file being assembled, so if you invoke NASM from a different directory these includes will fail with a "unable to open include file" error.
+</Note>
+
+The MSVC linker (`link.exe`) ships with Visual Studio and with the free **Build Tools for Visual Studio** (available from Microsoft's website). If you use MinGW you can substitute an equivalent `ld` invocation with a MinGW-format `kernel32` import library.
+
+After a successful build, `nlang.exe` appears in `src/main`.
+
+## What the Compiler Produces
+
+Running `nlang.exe path\to\script.n` produces a single output file: `script.nasm` in the same directory as the input. The generated file is a **complete, self-contained win64 NASM program** — it includes its own `bits 64 / default rel` preamble, `extern ExitProcess`, `global main`, and a `main:` entry point. You do not need to write any boilerplate; every generated file can be assembled and linked directly:
+
+```bash
+nasm -f win64 script.nasm -o script.obj
+link /subsystem:console /entry:main script.obj kernel32.lib
+```
+
+The generated file also includes any runtime helper routines the compiled program requires (string indexing, list operations, sort, etc.). Only the helpers actually used are emitted, keeping output size small.
+
+## Exit Codes
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Compilation succeeded. The `.nasm` output file has been written. |
+| `1` | Could not open or read the input file (file not found, wrong extension, or file exceeds the 6 MB buffer). |
+| `0x101` (257) | Compile error 1 — and so on up to `0x1FF`. The error number `n` is the low byte of the code minus `0x100`. See the table below for individual error meanings. |
+
+### Compile Error Codes (`0x100 + n`)
+
+| `n` | Constant | Description |
+|-----|----------|-------------|
+| 5 | `ERR_INVALID_VAR_SYNTAX` | Malformed `var`, `tvar`, or `list` statement. |
+| 6 | `ERR_UNTERMINATED_CMT` | A `###` block comment was never closed. |
+| 7 | `ERR_NAME_TOO_LONG` | An identifier is longer than 255 characters. |
+| 8 | `ERR_BAD_VAR_TYPE` | The type after `var`/`tvar` is not `num`, `str`, or `lstr` (or not `num`/`str` for `list`). |
+| 9 | `ERR_STR_TOO_LONG` | A `str` literal is longer than 8 characters; use `lstr` instead. |
+| 10 | `ERR_UNTERMINATED_STR` | A string literal is not closed before the end of its line. |
+| 11 | `ERR_REDECLARED` | The variable name is already in the variable table. |
+| 12 | `ERR_TABLE_FULL` | The variable table has reached its limit (255 variables or 64 KiB). |
+| 13 | `ERR_OUTPUT_FULL` | The generated NASM text exceeds the 1 MiB output buffer. |
+| 14 | `ERR_WRITE_FAILED` | Could not create or write the `.nasm` output file. |
+| 15 | `ERR_RESERVED_NAME` | A name beginning with `__` was defined outside a `.ns` file. |
+| 16 | `ERR_TYPE_MISMATCH` | A value or operand has the wrong type for its context. |
+| 17 | `ERR_UNKNOWN_VAR` | The name used has not been declared. |
+| 18 | `ERR_NOT_A_LIST` | A `list.x.<op>` operation was used on a variable that is not a list. |
+| 19 | `ERR_NOT_A_STRING` | A `.length` or `[#]` index was applied to a variable that is not a `str` or `lstr`. |
+
+## Buffer Limits
+
+The compiler uses three fixed-size buffers allocated in the `.bss` section. These are hard limits — the compiler does not grow them dynamically.
+
+| Buffer | Constant | Size | What fills it |
+|--------|----------|------|---------------|
+| Input file buffer | `BUFFER_SIZE` | **6,291,456 bytes (6 MiB)** | The raw bytes of the `.n`/`.nc`/`.ns` source file. If the file is 6 MiB or larger the opener rejects it with exit code `1`. |
+| Output NASM buffer | `OUT_SIZE` | **1,048,576 bytes (1 MiB)** | The NASM source text being generated. Overflowing this buffer triggers compile error `ERR_OUTPUT_FULL` (code 13). |
+| Variable table | `VAR_TABLE_SIZE` | **65,536 bytes (64 KiB), max 255 variables** | Stores variable names, types, and values. Overflowing by count or by bytes triggers compile error `ERR_TABLE_FULL` (code 12). |
+
+For most programs these limits are generous. Very large source files or programs that declare hundreds of variables in a single compilation unit are the scenarios most likely to approach them.

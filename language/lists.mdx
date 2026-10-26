@@ -1,0 +1,146 @@
+---
+title: "Lists in Nano: Fixed-Capacity Arrays of num or str"
+sidebarTitle: "Lists"
+description: "Create and manipulate ordered lists in Nano with list num and list str. Covers append, insert, remove, sort, indexing, and the 1024-entry capacity limit."
+---
+
+Lists are ordered, fixed-capacity collections that let you store and manipulate sequences of values. Nano supports two list element types — `num` for integers and `str` for short strings — and provides a rich set of built-in operations for appending, inserting, removing, sorting, and indexing entries. Lists are stored in the `.bss` section of the generated executable and are directly addressable at runtime.
+
+## Declaring a List
+
+```text
+list num <name>
+list str <name>
+```
+
+- `list num` — creates a list whose entries are 64-bit signed integers.
+- `list str` — creates a list whose entries are short strings (up to 8 characters each).
+
+```text
+list num scores
+list str tags
+```
+
+Declarations must appear as standalone statements. No initialiser value is permitted at declaration time.
+
+## Capacity
+
+Every list allocates space for exactly **1 024 entries** (`LIST_CAP = 1024`). The layout in `.bss` is a leading count word followed by 1 024 element slots. Attempting to append or insert beyond this limit raises runtime error `0x201`.
+
+## Operations
+
+All list operations use the `list.<name>.<method>` dot-notation form.
+
+### append
+
+Adds a value to the end of the list.
+
+```text
+list.scores.append 99
+list.tags.append 'fast'
+```
+
+### insert
+
+Inserts a value at the given zero-based index, shifting later entries one position to the right.
+
+```text
+list.scores.insert 0, 100
+list.tags.insert 2, 'slow'
+```
+
+### remove
+
+Removes the entry at the given index and shifts all later entries one position to the left.
+
+```text
+list.scores.remove 0
+list.tags.remove 2
+```
+
+### clear
+
+Sets the list's entry count to zero without deallocating storage.
+
+```text
+list.scores.clear
+list.tags.clear
+```
+
+### sort
+
+Sorts the list in-place using an insertion sort algorithm.
+
+- `list num` lists are sorted in **ascending numerical order** (signed comparison).
+- `list str` lists are sorted in **ascending alphabetical order** (using a byte-swap trick for fast lexicographic comparison).
+
+```text
+list.scores.sort
+list.tags.sort
+```
+
+### Index Access
+
+Read the element at a zero-based index. This syntax is valid in variable initialisers:
+
+```text
+var num top = list.scores[0]
+var str first = list.tags[0]
+```
+
+### length
+
+Returns the number of entries currently in the list:
+
+```text
+var num count = list.scores.length
+```
+
+## Sorting Behaviour
+
+| List type | Sort order |
+|---|---|
+| `list num` | Ascending signed integer order |
+| `list str` | Ascending alphabetical (lexicographic) order |
+
+## Runtime Error Codes
+
+| Code | Meaning |
+|---|---|
+| `0x201` | List full — capacity of 1 024 entries has been reached |
+| `0x202` | Index out of range — the requested index does not exist |
+
+## Operation Reference
+
+| Operation | Syntax | Description |
+|---|---|---|
+| Append | `list.<name>.append <value>` | Add a value to the end |
+| Insert | `list.<name>.insert <index>, <value>` | Insert a value at an index |
+| Remove | `list.<name>.remove <index>` | Remove the entry at an index |
+| Clear | `list.<name>.clear` | Reset entry count to zero |
+| Sort | `list.<name>.sort` | Sort entries in-place |
+| Index read | `list.<name>[<index>]` | Read the entry at an index |
+| Length | `list.<name>.length` | Get the current entry count |
+
+## Example
+
+```text
+list num primes
+
+list.primes.append 7
+list.primes.append 2
+list.primes.append 5
+list.primes.append 3
+
+list.primes.sort         # -> 2, 3, 5, 7
+
+var num first = list.primes[0]      # 2
+var num count = list.primes.length  # 4
+
+list.primes.remove 0     # remove 2 -> 3, 5, 7
+list.primes.clear        # count is now 0
+```
+
+<Note>
+  `lstr` (long string) values cannot be stored in a list. Lists accept only `num` and `str` elements. If you need to store variable-length strings, consider an `lstr` variable alongside a `list num` of indices or lengths.
+</Note>
