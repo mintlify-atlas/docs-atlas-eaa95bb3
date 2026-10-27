@@ -1,10 +1,10 @@
 ---
-title: "Importing Code and Packages in Nano"
+title: "Nano import Statement: Local Files and Remote Modules"
 sidebarTitle: "Imports"
 description: "Use import to include Nano source files, local packages, and remote GitHub-hosted modules. Inserted at the import location during compilation."
 ---
 
-The `import` statement lets you split a Nano project across multiple files and reuse code written by others without copying it by hand. When the compiler encounters an `import`, it reads the named file and inserts its contents at that exact point in the source, as if you had written the code inline. This means imported identifiers are immediately available to every statement that follows the `import` line, with no separate linking step required at the language level.
+The `import` statement lets you split a Nano project across multiple files and reuse code written by others without copying it by hand. When the compiler encounters an `import`, the intended behaviour is to read the named file and insert its contents at that exact point in the source, making imported identifiers available to every statement that follows. The search order, package naming conventions, and `.ns` reserved-name rules are all designed and parsed; however, code generation for `import` is still in progress — see the note below.
 
 ## Syntax
 
@@ -19,35 +19,35 @@ import mathutils
 import github.com/example/nanolibs/vectors.n
 ```
 
-## Search Order
+## Intended Search Order
 
-When you write `import mathutils`, the compiler looks for the file in the following order:
+When you write `import mathutils`, the compiler is designed to look for the file in the following order:
 
 <Steps>
   <Step title="Same directory">
     The compiler checks the directory that contains the file currently being compiled. This is the most common case for splitting a project into multiple `.n` files.
   </Step>
   <Step title="Defined directory">
-    If a package search directory has been configured (e.g. via a compiler flag or environment setting), it is searched next.
+    If a package search directory has been configured, it is searched next.
   </Step>
   <Step title="System PATH">
     The compiler walks the directories listed in the system `PATH` environment variable, allowing globally installed Nano packages to be imported by name alone.
   </Step>
   <Step title="GitHub URL">
-    If the import name begins with a URL (e.g. `github.com/...`), the compiler fetches the file directly from that remote location and compiles it without requiring a manual download.
+    If the import name begins with a URL (e.g. `github.com/...`), the compiler will fetch the file directly from that remote location and compile it without requiring a manual download.
   </Step>
 </Steps>
 
 ## GitHub Imports
 
-Nano can import source files directly from GitHub. Provide the full URL path to the `.n` or `.ns` file:
+The design allows importing source files directly from GitHub by providing the full URL path to the `.n` or `.ns` file:
 
 ```text
 import github.com/example/nanolibs/strings.ns
 import github.com/example/nanolibs/mathutils.n
 ```
 
-Because the file is fetched and inserted at compile time, your project always uses the version of the file at that URL. This means a project shared on GitHub can be compiled by anyone without manually downloading its dependencies — a simple recompile picks up the latest imported file automatically.
+Because the file would be fetched and inserted at compile time, a project shared on GitHub could be compiled by anyone without manually downloading its dependencies.
 
 ## Package Files (`.ns`)
 
@@ -62,8 +62,6 @@ var num __y = 0
 ```text
 # main.n
 import github.com/example/nanolibs/vectors.ns
-
-var num magnitude = __x   # __x is now available here
 ```
 
 ## Example: Local Multi-File Project
@@ -73,15 +71,13 @@ var num magnitude = __x   # __x is now available here
 var num PI = 3
 
 # main.n
-import utils          # inserts utils.n here
-
-var num area = PI     # PI is available because utils.n was inserted above
+import utils          # utils.n would be inserted here
 ```
 
 <Note>
-  `import` inserts the named file's source at the import location during compilation. There is no separate linking step — variables, functions, and list declarations from the imported file are available to all code that appears after the `import` line, just as if you had typed them directly into the file.
+  Import code generation is not yet implemented. The compiler currently emits a `; TODO: statement type 11` placeholder when it encounters an `import` statement, meaning no file is actually read or inserted at this time. The parsing infrastructure and intended search-order behaviour are described above for reference, but compiled output for `import` will be available in a future release. Do not rely on `import` producing any effect in the current compiler version.
 </Note>
 
 <Tip>
-  For large projects, organise reusable code into `.ns` package files and import them by name or URL. The `__` namespace prefix prevents your package's internal variables from colliding with names defined in the files that import it, keeping the global variable table clean even as your project grows.
+  For large projects, plan to organise reusable code into `.ns` package files. The `__` namespace prefix is reserved for package-internal variables, preventing name collisions with the files that will eventually import them.
 </Tip>

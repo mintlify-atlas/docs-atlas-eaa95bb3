@@ -1,7 +1,7 @@
 ---
-title: "Nano Output Format: Generated NASM Assembly"
+title: "Nano Compiler Output Format: Generated NASM Assembly"
 sidebarTitle: "Output Format"
-description: "Understand the .nasm files the Nano compiler produces. Covers the file header, variable layout in .bss and .data, label naming, and the runtime helper system."
+description: "Reference for the .nasm files the Nano compiler produces: header boilerplate, variable layout in .bss and .data, label naming, and runtime helpers."
 ---
 
 Every time the Nano compiler runs successfully, it produces a complete, self-contained NASM win64 assembly program. The output file requires no linker scripts, no extra object files, and no external dependencies beyond `kernel32.lib` — it is a ready-to-assemble text file that reproduces the full behaviour of the original Nano source. The file is written by the back-end (`nlang_writer.nasm`) into a 1 MB in-memory buffer and flushed to disk as `<input>.nasm` (for example, `script.n` → `script.nasm`).

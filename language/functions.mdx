@@ -1,10 +1,10 @@
 ---
-title: "Defining and Calling Functions in Nano"
+title: "Nano Functions: Defining Blocks with the def Keyword"
 sidebarTitle: "Functions"
-description: "Define reusable functions in Nano with def. Covers syntax, arguments, return values, and how tvar scoping keeps temporary variables clean."
+description: "Declare named function blocks in Nano using def. Covers syntax, argument lists, tvar scoping, and current compiler status for def codegen."
 ---
 
-Functions let you group a sequence of statements under a name so they can be called from anywhere in your program. In Nano, functions are declared with the `def` keyword, accept any number of named arguments, and can return a value that the calling code can use directly. Their bodies are indented, matching Nano's Python-inspired style.
+Functions let you group a sequence of statements under a name so the code can be organised into reusable, named blocks. In Nano, functions are declared with the `def` keyword and accept any number of named arguments. Function bodies are indented, matching Nano's Python-inspired style.
 
 ## Syntax
 
@@ -12,8 +12,8 @@ Functions let you group a sequence of statements under a name so they can be cal
 def <name> (<args>):
 ```
 
-- `<name>` — the identifier you will use to call the function. Must start with a letter or underscore.
-- `<args>` — a comma-separated list of parameter names. Omit the parentheses' contents for a zero-argument function, but the parentheses themselves are always required.
+- `<name>` — the identifier for the function. Must start with a letter or underscore.
+- `<args>` — a comma-separated list of parameter names. Omit the contents for a zero-argument function, but the parentheses are always required.
 
 ```text
 def greet ():
@@ -33,31 +33,9 @@ def clamp (val, lo, hi):
     # clamp logic would go here
 ```
 
-## Return Values
-
-A function can return a value to the code that called it. The returned value can be assigned directly to a variable in the calling scope:
-
-```text
-def double (n):
-    var num out = n
-
-var num answer = double(21)
-```
-
-## Calling a Function
-
-Use the function name followed by its arguments in parentheses. The result can be captured in a variable or used as an operand:
-
-```text
-def add (a, b):
-    var num result = a
-
-var num total = add(10, 32)
-```
-
 ## tvar Cleanup Inside Functions
 
-Variables declared with `tvar` are *temporary*: they exist only for the lifetime of the current function or script. When a function ends, the compiler calls `purge_tvars`, which removes every `tvar` entry from the variable table and compacts the remaining variables. This means temporary working values do not leak out of a function and do not consume table space after the function returns.
+Variables declared with `tvar` are *temporary*: they exist only for the lifetime of the current function or script. When a function body ends, the compiler calls `purge_tvars`, which removes every `tvar` entry from the variable table and compacts the remaining variables. This prevents temporary working values from leaking out of a function and ensures they do not consume table space after the function completes.
 
 ```text
 def compute (x):
@@ -67,31 +45,34 @@ def compute (x):
 # scratch is gone here; out is still accessible
 ```
 
-<Steps>
-  <Step title="Declare the function">
-    Write `def name (args):` on its own line. Every following indented line is part of the body.
-  </Step>
-  <Step title="Write the body">
-    Use any Nano statements — `var`, `tvar`, `list`, control flow, or other function calls — indented beneath the `def` line.
-  </Step>
-  <Step title="Return a value (optional)">
-    Assign the result to a named variable inside the function. The calling code can capture that return value in a variable of its own.
-  </Step>
-  <Step title="Call the function">
-    Use `name(args)` wherever you need the result. Assign it to a variable to keep the return value.
-  </Step>
-</Steps>
+<Note>
+  Function code generation (`def`, statement type 10) is still in progress. The compiler currently emits a `; TODO: statement type 10` placeholder when it encounters a `def` statement. The parsing infrastructure — keyword recognition, argument lists, and `tvar` cleanup — is in place, but compiled output for function bodies will be available in a future release. Do not rely on `def` producing executable code in the current version.
+</Note>
 
-## Example: Adding Two Numbers
+## Declaring a Function
+
+```text
+def greet ():
+    var str msg = 'hello'
+```
+
+The `def` keyword is followed by the function name, a parenthesised argument list (which may be empty), and a colon. Every indented statement beneath it forms the body.
+
+## Arguments
+
+Arguments are named in the parentheses. The compiler parses the argument list and registers the names for use inside the body.
+
+```text
+def scale (value, factor):
+    var num result = value
+```
+
+## Example
 
 ```text
 def add (a, b):
     var num result = a
     # b would be added to result here
-
-var num total = add(40, 2)
 ```
 
-<Note>
-  Full function code generation is under active development. The compiler currently emits a `; TODO: statement type 10` placeholder for `def` bodies. The parsing infrastructure — including argument lists, scoping, and `tvar` cleanup — is in place, and generated output will be available in an upcoming release.
-</Note>
+The compiler records the `def` statement and its argument names. Full code generation — including the emitted call sequence and return mechanism — will be implemented alongside scope handling in a forthcoming release.

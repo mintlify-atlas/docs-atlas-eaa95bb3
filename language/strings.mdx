@@ -1,10 +1,10 @@
 ---
-title: "Working with Strings in Nano: str and lstr"
+title: "String Variables in Nano: str and lstr Types Explained"
 sidebarTitle: "Strings"
 description: "Nano offers two string types: str for up to 8 characters and lstr for unlimited length. Learn indexing, length queries, and when to choose each type."
 ---
 
-Nano provides two distinct string types to balance performance against storage capacity. The `str` type packs up to eight characters into a single 64-bit register, making it extremely fast to load and compare. The `lstr` (long string) type lives in the `.data` section of the executable with an 8-byte length prefix, trading a little runtime overhead for the ability to hold strings of arbitrary length. Choosing the right type from the start avoids a compiler error and keeps your generated code efficient.
+Nano provides two distinct string types to balance performance against storage capacity. The `str` type packs up to eight characters into a single 64-bit register, making it extremely fast to load and compare. The `lstr` (long string) type lives in the `.data` section of the executable with an 8-byte big-endian length prefix, trading a little runtime overhead for the ability to hold strings of arbitrary length. Choosing the right type from the start avoids a compiler error and keeps your generated code efficient.
 
 ## The `str` Type
 
@@ -16,7 +16,7 @@ var str code = "AB12"
 ```
 
 - **Default value:** `'0'` (the character zero, not the digit).
-- **Maximum length:** 8 characters. Exceeding this limit raises compile error `ERR_STR_TOO_LONG`.
+- **Maximum length:** 8 characters. Exceeding this limit raises compile error `ERR_STR_TOO_LONG` (error code 9).
 - Literals may use single quotes (`'...'`) or double quotes (`"..."`).
 
 ### Length
@@ -25,7 +25,7 @@ var str code = "AB12"
 var num len = greeting.length
 ```
 
-Returns the count of non-zero bytes in the packed value.
+Calls the `rt_str_len` runtime helper, which counts non-zero bytes by shifting the packed value right by 8 bits repeatedly until the result reaches zero. The count of those shifts is the length.
 
 ### Index Access
 
@@ -33,18 +33,18 @@ Returns the count of non-zero bytes in the packed value.
 var str first = greeting[0]
 ```
 
-Returns a one-character `str` containing the character at the given zero-based position.
+Calls the `rt_str_idx` runtime helper. Valid indices are 0–7. An out-of-range index or an index pointing to a zero byte (past the end of the string) raises runtime error `0x202`.
 
 ## The `lstr` Type
 
-An `lstr` variable is stored in the `.data` section as an **8-byte big-endian length prefix** followed by the payload bytes. There is no character limit.
+An `lstr` variable is stored in the `.data` section as an **8-byte big-endian length prefix** followed by the payload bytes. There is no fixed character limit beyond available memory and the 1 MiB output buffer.
 
 ```text
 var lstr sentence = 'this sentence is very long and it will not fit in a normal string variable'
 ```
 
 - **Default value:** `'0'`.
-- **No character limit** — limited only by available memory and the 1 MiB output buffer.
+- **No fixed character limit** — limited only by available memory and the 1 MiB output buffer.
 - Slightly slower than `str` because the value must be read from memory rather than from a register.
 
 ### Length
@@ -53,7 +53,7 @@ var lstr sentence = 'this sentence is very long and it will not fit in a normal 
 var num len = sentence.length
 ```
 
-Reads the 8-byte big-endian length prefix at the start of the variable's storage.
+Reads the first 8-byte word of the variable's storage directly. That word is the big-endian length written at declaration time — no runtime call is needed.
 
 ### Index Access
 
@@ -61,7 +61,7 @@ Reads the 8-byte big-endian length prefix at the start of the variable's storage
 var str ch = sentence[4]
 ```
 
-Returns the character at the given zero-based index as a one-character `str`.
+Calls the `rt_lstr_idx` runtime helper, which reads from `[rcx + rdx + 8]` (past the 8-byte length prefix). An index that equals or exceeds the stored length raises runtime error `0x202`.
 
 ## String Literals
 
@@ -73,7 +73,7 @@ Both types accept the same literal syntax:
 The opening and closing quote character must match. String literals cannot span multiple lines.
 
 <Note>
-  Escape sequences (such as `\n` or `\t`) are not yet supported. If you need a newline or tab character inside a string, they must be embedded directly in the source or handled through a future escape sequence feature.
+  Escape sequences (such as `\n` or `\t`) are not yet supported. Characters that require escaping must be embedded directly in the source file.
 </Note>
 
 ## Choosing Between `str` and `lstr`
@@ -96,11 +96,11 @@ The opening and closing quote character must match. String literals cannot span 
 
 | Feature | `str` | `lstr` |
 |---|---|---|
-| Max length | 8 characters | Unlimited |
-| Storage | 64-bit register value | `.data` section with length prefix |
+| Max length | 8 characters | No fixed limit |
+| Storage | 64-bit packed value | `.data` section with 8-byte big-endian length prefix |
 | Default value | `'0'` | `'0'` |
-| `.length` returns | Count of non-zero bytes | 8-byte big-endian prefix value |
-| `[index]` returns | One-character `str` | One-character `str` |
+| `.length` | Count of non-zero bytes (via `rt_str_len`) | First 8-byte word of storage (no runtime call) |
+| `[index]` | One-character `str` (via `rt_str_idx`, index 0–7) | One-character `str` (via `rt_lstr_idx`) |
 | Usable in `list str` | Yes | **No** |
 | Relative speed | Faster | Slower |
 

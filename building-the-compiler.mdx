@@ -1,7 +1,7 @@
 ---
-title: "Building the Nano Compiler from Source"
+title: "How to Build the Nano Compiler from NASM Source Files"
 sidebarTitle: "Build the Compiler"
-description: "Assemble nlang.exe from the four NASM source files using the NASM assembler and the MSVC or MinGW linker on Windows x64."
+description: "Assemble nlang.exe from the four NASM source files with NASM and the MSVC linker on Windows x64. Covers build commands, file roles, and exit codes."
 ---
 
 The Nano compiler (`nlang.exe`) is written entirely in hand-crafted x86-64 NASM assembly. There is no C, no higher-level language, no generated code — every byte of the compiler is human-written assembly split across four source files that each own a distinct phase of the compilation pipeline. This page explains what each file does, how to build them into a working binary, what the compiler produces, and the hard limits imposed by its fixed-size buffers.

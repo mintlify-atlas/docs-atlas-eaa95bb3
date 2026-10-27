@@ -1,10 +1,14 @@
 ---
-title: "Direct Memory Access in Nano with mem.*"
+title: "Direct Memory Access in Nano Using the mem.* Functions"
 sidebarTitle: "Memory"
 description: "Read, write, copy, and clear arbitrary memory addresses in Nano using the mem.get, mem.set, mem.clear, and mem.copy built-in functions."
 ---
 
 The `mem.*` family of built-in functions gives Nano programs direct, low-level access to arbitrary memory addresses. You can read values from specific addresses into variables, write values back, zero-initialise memory ranges, and copy blocks of data from one address to another — all without importing any external library. These functions are particularly useful when interfacing with hardware registers, managing raw buffers, or performing manual memory layout work in performance-critical code.
+
+<Note>
+  `mem.*` parsing is implemented (`FN_MEM = 12`), but code generation is still in progress. The compiler currently emits a `; TODO: statement type 12` comment in the output file for every `mem.*` statement. The syntax and semantics documented here reflect the final planned behaviour.
+</Note>
 
 <Warning>
   Passing an invalid or unmapped memory address to any `mem.*` function will cause an immediate access violation and crash your program. Always verify that the addresses you use refer to memory your process actually owns before calling these functions.

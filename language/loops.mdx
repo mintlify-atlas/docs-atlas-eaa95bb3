@@ -1,5 +1,5 @@
 ---
-title: "Loops in Nano: while, until, and for"
+title: "Loop Constructs in Nano: while, until, and for Loops"
 sidebarTitle: "Loops"
 description: "Write loops in Nano with while (condition-true), until (condition-false), and for (counter-based). Includes syntax and practical examples."
 ---
@@ -52,9 +52,9 @@ until count == 10:
 
 ---
 
-## `for` — count a variable to a value
+## `for` — loop until a variable reaches a value
 
-The `for` loop increments a variable on each iteration and stops once the variable equals the target value.
+The `for` loop repeats its body until the named variable equals the target value.
 
 ```text
 for <var> = <value>:
@@ -67,12 +67,16 @@ for <var> = <value>:
 var num i = 0
 
 for i = 10:
-    # body executes, incrementing i each time, until i equals 10
+    # body executes until i equals 10
 ```
 
 `for` is the most concise choice when you know in advance exactly how many iterations you need.
 
 ---
+
+<Note>
+Code generation for `while`, `until`, and `for` is actively being developed. The compiler parses and validates all three loop forms correctly, and the syntax documented here is stable, but full NASM emission for loop bodies is still in progress. Check back for updates as the Nano compiler matures.
+</Note>
 
 <Tip>
 Declare loop counters with `tvar` instead of `var` so they are automatically removed from the variable table when the current scope ends. This keeps your variable table clean and makes it clear that the counter is not needed outside the loop.

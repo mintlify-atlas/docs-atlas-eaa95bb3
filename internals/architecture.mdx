@@ -1,7 +1,7 @@
 ---
 title: "Nano Compiler Architecture: Four-File NASM Pipeline"
 sidebarTitle: "Architecture"
-description: "Explore how the Nano compiler is structured across four NASM source files: the opener, front-end, back-end, and entry point that together translate .n to native code."
+description: "How the Nano compiler spans four NASM files — opener, front-end, back-end, and entry point — to translate .n scripts into native Windows executables."
 ---
 
 The Nano compiler is 100% hand-written x86-64 NASM assembly, split across four source files that are designed to be read and modified by humans. There are no generated tables, no build-time code generators, and no external libraries beyond the Windows kernel32 API. All four files are woven together at assemble-time via `%include` directives in `nlang_main.nasm`, producing a single flat translation unit that NASM turns into a native Windows PE executable.

@@ -4,7 +4,7 @@ sidebarTitle: "Lists"
 description: "Create and manipulate ordered lists in Nano with list num and list str. Covers append, insert, remove, sort, indexing, and the 1024-entry capacity limit."
 ---
 
-Lists are ordered, fixed-capacity collections that let you store and manipulate sequences of values. Nano supports two list element types — `num` for integers and `str` for short strings — and provides a rich set of built-in operations for appending, inserting, removing, sorting, and indexing entries. Lists are stored in the `.bss` section of the generated executable and are directly addressable at runtime.
+Lists are ordered, fixed-capacity collections that let you store and manipulate sequences of values. Nano supports two list element types — `num` for integers and `str` for short strings — and provides a built-in set of operations for appending, inserting, removing, sorting, and indexing entries. Lists are stored in the `.bss` section of the generated executable and are directly addressable at runtime.
 
 ## Declaring a List
 
@@ -21,11 +21,11 @@ list num scores
 list str tags
 ```
 
-Declarations must appear as standalone statements. No initialiser value is permitted at declaration time.
+Declarations must appear as standalone statements. No initialiser value is permitted at declaration time. The element type must be exactly `num` or `str`; using `lstr` raises compiler error `ERR_BAD_VAR_TYPE` (error code 8).
 
 ## Capacity
 
-Every list allocates space for exactly **1 024 entries** (`LIST_CAP = 1024`). The layout in `.bss` is a leading count word followed by 1 024 element slots. Attempting to append or insert beyond this limit raises runtime error `0x201`.
+Every list allocates space for exactly **1 024 entries** (`LIST_CAP = 1024`). The memory layout in `.bss` is a leading 8-byte count word followed by 1 024 eight-byte element slots (`resq LIST_CAP + 1`). Attempting to append or insert beyond this limit raises runtime error `0x201`.
 
 ## Operations
 
@@ -69,10 +69,10 @@ list.tags.clear
 
 ### sort
 
-Sorts the list in-place using an insertion sort algorithm.
+Sorts the list in-place.
 
-- `list num` lists are sorted in **ascending numerical order** (signed comparison).
-- `list str` lists are sorted in **ascending alphabetical order** (using a byte-swap trick for fast lexicographic comparison).
+- `list num` lists are sorted in **ascending numerical order** using an insertion sort with signed comparison (`rt_list_sort_num`).
+- `list str` lists are sorted in **ascending alphabetical order** using a byte-swap (`bswap`) trick for fast lexicographic comparison (`rt_list_sort_str`).
 
 ```text
 list.scores.sort
@@ -142,5 +142,5 @@ list.primes.clear        # count is now 0
 ```
 
 <Note>
-  `lstr` (long string) values cannot be stored in a list. Lists accept only `num` and `str` elements. If you need to store variable-length strings, consider an `lstr` variable alongside a `list num` of indices or lengths.
+  `lstr` (long string) values cannot be stored in a list. Lists accept only `num` and `str` elements. Attempting to declare `list lstr` raises `ERR_BAD_VAR_TYPE`. If you need to store variable-length strings, consider an `lstr` variable alongside a `list num` of indices or lengths.
 </Note>

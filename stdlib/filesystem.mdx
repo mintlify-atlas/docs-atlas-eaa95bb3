@@ -1,10 +1,14 @@
 ---
-title: "File System Operations in Nano with fs.*"
+title: "File System Operations in Nano Using the fs.* Family"
 sidebarTitle: "Filesystem"
 description: "Create, read, write, move, compress, and secure files and directories in Nano using the built-in fs.* function family — no external libraries required."
 ---
 
 The `fs.*` family of built-in functions gives Nano programs a complete file system API straight out of the box. You can create, read, write, move, and delete files, manage directories, inspect metadata, compress archives, and control permissions and security — all without importing any external library. Every `fs.*` function is a first-class statement in the language and works directly on the host Windows file system.
+
+<Note>
+  `fs.*` parsing is implemented (`FN_FS = 13`), but code generation is still in progress. The compiler currently emits a `; TODO: statement type 13` comment in the output file for every `fs.*` statement. The syntax and semantics documented here reflect the final planned behaviour.
+</Note>
 
 <Note>
   Path arguments follow standard Windows path conventions. Both backslashes (`C:\Users\nano\file.txt`) and forward slashes (`C:/Users/nano/file.txt`) are accepted.
